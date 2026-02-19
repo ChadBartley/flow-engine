@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "id": "story-writer",
+  "name": "Interactive Story Writer",
+  "version": "1.0",
+  "nodes": [
+    {
+      "instance_id": "llm",
+      "node_type": "llm_call",
+      "config": {
+        "provider": "ollama",
+        "model": "ministral-3:3b",
+        "system_prompt": "You are a collaborative story writer. On each turn you write exactly 2-3 paragraphs continuing the story based on the reader's direction.\n\nRules:\n- Keep each segment vivid but concise (2-3 paragraphs max)\n- End each segment at a natural decision point or cliffhanger\n- Incorporate the reader's suggestions naturally into the narrative\n- Maintain consistent characters, tone, and setting across segments\n- On the very first turn, establish the setting and introduce the main character based on the user's prompt",
+        "tools_from_graph": false,
+        "max_tokens": 512
+      }
+    },
+    {
+      "instance_id": "review",
+      "node_type": "human_in_loop",
+      "config": {}
+    },
+    {
+      "instance_id": "wrap",
+      "node_type": "jq",
+      "config": {
+        "expression": "{messages: [{role: \"user\", content: .}], action: (if (. == \"done\" or . == \"end\" or . == \"quit\" or . == \"stop\") then \"stop\" else \"continue\" end)}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "llm",
+      "from_port": "output",
+      "to_node": "review",
+      "to_port": "input"
+    },
+    {
+      "id": "e2",
+      "from_node": "review",
+      "from_port": "output",
+      "to_node": "wrap",
+      "to_port": "input"
+    },
+    {
+      "id": "e3",
+      "from_node": "wrap",
+      "from_port": "output",
+      "to_node": "llm",
+      "to_port": "input",
+      "condition": {
+        "expression": "action == 'continue'"
+      }
+    }
+  ],
+  "tool_definitions": {},
+  "metadata": {
+    "description": "An interactive story writer that pauses for human direction between each segment. Type 'done', 'end', 'quit', or 'stop' to finish."
+  }
+}

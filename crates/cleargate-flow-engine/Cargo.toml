@@ -1,0 +1,64 @@
+[package]
+name = "cleargate-flow-engine"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["dylib", "jq", "cron", "http-node"]
+dylib = ["dep:libloading"]
+jq = ["dep:jq-rs"]
+cron = ["dep:cron"]
+http-node = ["dep:reqwest"]
+schemars = ["dep:schemars"]
+test-support = []
+
+[dependencies]
+# Async runtime
+tokio = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# Identifiers
+uuid = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Hashing (for content-addressed versioning)
+sha2 = { workspace = true }
+
+# Tracing
+tracing = { workspace = true }
+
+# CSV parsing
+csv = { workspace = true }
+
+# Synchronization
+parking_lot = { workspace = true }
+
+# Feature-gated dependencies
+libloading = { workspace = true, optional = true }
+jq-rs = { workspace = true, optional = true }
+cron = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tempfile = { workspace = true }
+wiremock = { workspace = true }
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }
+cleargate-storage-oss = { path = "../cleargate-storage-oss" }
+
+[lib]
+name = "cleargate_flow_engine"
+path = "src/lib.rs"

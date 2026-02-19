@@ -1,0 +1,17 @@
+[package]
+name = "cleargate-python"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "cleargate_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["abi3-py39", "extension-module"] }
+cleargate-flow-engine = { path = "../cleargate-flow-engine" }
+cleargate-adapters = { path = "../cleargate-adapters" }
+cleargate-storage-oss = { path = "../cleargate-storage-oss" }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }

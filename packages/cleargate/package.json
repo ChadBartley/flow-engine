@@ -1,0 +1,57 @@
+{
+  "name": "cleargate",
+  "version": "0.1.0",
+  "description": "LLM observability, replay, and testing for AI agent pipelines",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "llm",
+    "observability",
+    "langchain",
+    "langgraph",
+    "ai",
+    "agents"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@langchain/core": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@langchain/core": "^0.3.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "napi": {
+    "name": "cleargate",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "optionalDependencies": {
+    "@cleargate/binding-darwin-arm64": "0.1.0",
+    "@cleargate/binding-darwin-x64": "0.1.0",
+    "@cleargate/binding-linux-x64-gnu": "0.1.0",
+    "@cleargate/binding-linux-arm64-gnu": "0.1.0",
+    "@cleargate/binding-win32-x64-msvc": "0.1.0"
+  }
+}

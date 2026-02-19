@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "id": "inventory-agent",
+  "name": "Inventory Agent",
+  "version": "1.0",
+  "nodes": [
+    {
+      "instance_id": "llm",
+      "node_type": "llm_call",
+      "config": {
+        "provider": "ollama",
+        "model": "ministral-3:3b",
+        "system_prompt": "You are a product advisor for a tech accessories store. You help customers find products, check availability, and compare options.\n\nAvailable tools:\n- search_products: Find products by name/description, category, or price range\n- check_stock: Check if specific SKUs are in stock\n- compare_prices: Compare prices across multiple SKUs\n\nBe helpful and make recommendations based on the customer's needs. If a product is out of stock, suggest alternatives.",
+        "tools_from_graph": true
+      }
+    },
+    {
+      "instance_id": "check",
+      "node_type": "conditional",
+      "config": {}
+    },
+    {
+      "instance_id": "router",
+      "node_type": "tool_router",
+      "config": {}
+    },
+    {
+      "instance_id": "catalog",
+      "node_type": "json_lookup",
+      "config": {
+        "data_file": "examples/inventory-agent/products.json"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "llm",
+      "from_port": "output",
+      "to_node": "check",
+      "to_port": "input"
+    },
+    {
+      "id": "e2",
+      "from_node": "check",
+      "from_port": "data",
+      "to_node": "router",
+      "to_port": "input",
+      "condition": {
+        "expression": "finish_reason == 'tool_calls'"
+      }
+    },
+    {
+      "id": "e3",
+      "from_node": "router",
+      "from_port": "output",
+      "to_node": "catalog",
+      "to_port": "input"
+    },
+    {
+      "id": "e4",
+      "from_node": "catalog",
+      "from_port": "output",
+      "to_node": "llm",
+      "to_port": "input"
+    }
+  ],
+  "tool_definitions": {
+    "search_products": {
+      "name": "search_products",
+      "description": "Search the product catalog by name, category, or price range",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search term to match against product name and description" },
+          "category": { "type": "string", "description": "Filter by category (Keyboards, Mice, Headsets, Monitors, Webcams, Cables & Adapters)" },
+          "max_price": { "type": "number", "description": "Maximum price filter" },
+          "min_price": { "type": "number", "description": "Minimum price filter" },
+          "limit": { "type": "integer", "description": "Max results to return (default 10)" }
+        }
+      },
+      "tool_type": { "kind": "node", "target_node_id": "catalog" },
+      "metadata": {}
+    },
+    "check_stock": {
+      "name": "check_stock",
+      "description": "Check stock availability for one or more products by SKU",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sku": { "type": "string", "description": "Single SKU to check" },
+          "skus": { "type": "array", "items": { "type": "string" }, "description": "Multiple SKUs to check" }
+        }
+      },
+      "tool_type": { "kind": "node", "target_node_id": "catalog" },
+      "metadata": {}
+    },
+    "compare_prices": {
+      "name": "compare_prices",
+      "description": "Compare prices across multiple products by SKU",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "skus": { "type": "array", "items": { "type": "string" }, "description": "SKUs to compare" }
+        },
+        "required": ["skus"]
+      },
+      "tool_type": { "kind": "node", "target_node_id": "catalog" },
+      "metadata": {}
+    }
+  },
+  "metadata": {
+    "description": "An agent that helps customers search products, check stock, and compare prices from a JSON catalog"
+  }
+}

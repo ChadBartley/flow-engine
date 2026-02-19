@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "id": "data-analyst",
+  "name": "Data Analyst Agent",
+  "version": "1.0",
+  "nodes": [
+    {
+      "instance_id": "llm",
+      "node_type": "llm_call",
+      "config": {
+        "provider": "ollama",
+        "model": "ministral-3:3b",
+        "system_prompt": "You are a data analyst assistant. You have access to a sales dataset with the following tools:\n\n- list_columns: See what columns and sample data are available\n- query: Filter rows by column value (operators: eq, gt, lt, gte, lte, contains)\n- aggregate: Compute sum, avg, min, max, or count on a column, optionally grouped\n\nAlways start by listing columns if you haven't seen the data yet. Use the tools to answer questions — never guess or make up data.",
+        "tools_from_graph": true
+      }
+    },
+    {
+      "instance_id": "check",
+      "node_type": "conditional",
+      "config": {}
+    },
+    {
+      "instance_id": "router",
+      "node_type": "tool_router",
+      "config": {}
+    },
+    {
+      "instance_id": "csv_tools",
+      "node_type": "csv_tool",
+      "config": {
+        "data_file": "examples/data-analyst/sales.csv"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "llm",
+      "from_port": "output",
+      "to_node": "check",
+      "to_port": "input"
+    },
+    {
+      "id": "e2",
+      "from_node": "check",
+      "from_port": "data",
+      "to_node": "router",
+      "to_port": "input",
+      "condition": {
+        "expression": "finish_reason == 'tool_calls'"
+      }
+    },
+    {
+      "id": "e3",
+      "from_node": "router",
+      "from_port": "output",
+      "to_node": "csv_tools",
+      "to_port": "input"
+    },
+    {
+      "id": "e4",
+      "from_node": "csv_tools",
+      "from_port": "output",
+      "to_node": "llm",
+      "to_port": "input"
+    }
+  ],
+  "tool_definitions": {
+    "list_columns": {
+      "name": "list_columns",
+      "description": "List all columns in the dataset with sample values and row count",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "tool_type": { "kind": "node", "target_node_id": "csv_tools" },
+      "metadata": {}
+    },
+    "query": {
+      "name": "query",
+      "description": "Filter and search rows in the dataset",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column": { "type": "string", "description": "Column name to filter on" },
+          "operator": { "type": "string", "enum": ["eq", "gt", "lt", "gte", "lte", "contains"], "description": "Comparison operator" },
+          "value": { "description": "Value to compare against" },
+          "limit": { "type": "integer", "description": "Max rows to return (default 20)" }
+        },
+        "required": ["column", "operator", "value"]
+      },
+      "tool_type": { "kind": "node", "target_node_id": "csv_tools" },
+      "metadata": {}
+    },
+    "aggregate": {
+      "name": "aggregate",
+      "description": "Compute aggregate statistics on a column",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "column": { "type": "string", "description": "Column to aggregate" },
+          "operation": { "type": "string", "enum": ["sum", "avg", "min", "max", "count"], "description": "Aggregate function" },
+          "group_by": { "type": "string", "description": "Optional column to group results by" }
+        },
+        "required": ["column", "operation"]
+      },
+      "tool_type": { "kind": "node", "target_node_id": "csv_tools" },
+      "metadata": {}
+    }
+  },
+  "metadata": {
+    "description": "An agent that analyzes CSV sales data using list_columns, query, and aggregate tools"
+  }
+}

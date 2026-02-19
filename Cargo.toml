@@ -1,0 +1,83 @@
+[workspace]
+members = [
+    "crates/cleargate-flow-engine",
+    "crates/cleargate-storage-oss",
+    "crates/cleargate-adapters",
+    "crates/cleargate-providers",
+    "crates/cleargate-python",
+    "crates/cleargate-node",
+    "crates/cleargate-dotnet",
+    "crates/test-echo-node",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/cleargate/flow-engine"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.48", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["indexmap"] }
+
+# Database (SeaORM)
+sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls", "macros", "mock"] }
+sea-orm-migration = "1.1"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+bytes = "1.11"
+
+# Observability
+tracing = "0.1"
+
+# Crypto
+sha2 = "0.10"
+uuid = { version = "1.18", features = ["v4", "v7", "serde", "js"] }
+
+# CSV parsing
+csv = "1.3"
+
+# JQ expression evaluation
+jq-rs = "0.4"
+
+# Cron scheduling
+cron = "0.12"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Random number generation
+rand = "0.9"
+
+# JSON Schema generation
+schemars = { version = "0.8", features = ["derive", "chrono"] }
+
+# Async traits
+async-trait = "0.1"
+
+# Futures
+futures = "0.3"
+futures-util = "0.3"
+
+# Pin utilities
+pin-project = "1.1"
+
+# Licensing and protection
+libloading = "0.8"
+
+# Build and utility dependencies
+parking_lot = "0.12"
+
+# Testing dependencies
+tempfile = "3.23"
+wiremock = "0.6"

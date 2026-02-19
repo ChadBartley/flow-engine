@@ -1,0 +1,24 @@
+[package]
+name = "cleargate-providers"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+pin-project = { workspace = true }
+tracing = { workspace = true }
+bytes = { workspace = true }
+rand = { workspace = true }
+uuid = { workspace = true }
+
+[lib]
+name = "cleargate_providers"
+path = "src/lib.rs"

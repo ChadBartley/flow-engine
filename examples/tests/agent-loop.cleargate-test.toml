@@ -1,0 +1,46 @@
+[test]
+ name = "Agent loop - model comparison"
+ description = "Verify agent loop produces valid catalog responses across models"
+ timeout_secs = 60
+
+ [source]
+ flow_id = "inventory-agent"
+ inputs = { messages = [{ role = "user", content = "Find keyboards under $50" }] }
+
+ [[cases]]
+ name = "llm node produces relevant response"
+ node_id = "llm"
+
+ [[cases.assertions]]
+ type = "status_equals"
+ value = "completed"
+
+ [[cases.assertions]]
+ type = "output_matches"
+ field = "content"
+ regex = "(?i)keyboard"
+
+ [[cases.assertions]]
+ type = "output_contains"
+ field = "content"
+ value = "$"
+
+ [[cases]]
+ name = "llm node with qwen model"
+ node_id = "llm"
+
+ [cases.substitutions]
+ config_overrides = { model = "qwen3:1.7b" }
+
+ [[cases.assertions]]
+ type = "status_equals"
+ value = "completed"
+
+ [[cases.assertions]]
+ type = "output_matches"
+ field = "content"
+ regex = "(?i)keyboard"
+
+ [[cases.assertions]]
+ type = "latency_max_ms"
+ value = 30000

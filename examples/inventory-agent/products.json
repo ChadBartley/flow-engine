@@ -1,0 +1,292 @@
+[
+  {
+    "sku": "KB-001",
+    "name": "Mechanical Keyboard Pro",
+    "description": "Cherry MX Blue switches with full RGB backlight, aluminum frame, detachable USB-C cable",
+    "category": "Keyboards",
+    "price": 89.99,
+    "stock": 25,
+    "rating": 4.5,
+    "tags": ["mechanical", "rgb", "usb-c"]
+  },
+  {
+    "sku": "KB-002",
+    "name": "Wireless Keyboard Slim",
+    "description": "Bluetooth 5.0, low-profile scissor keys, rechargeable battery lasts 3 months",
+    "category": "Keyboards",
+    "price": 49.99,
+    "stock": 42,
+    "rating": 4.2,
+    "tags": ["wireless", "bluetooth", "rechargeable"]
+  },
+  {
+    "sku": "KB-003",
+    "name": "Compact 65% Keyboard",
+    "description": "Hot-swappable switches, PBT keycaps, programmable layers, USB-C",
+    "category": "Keyboards",
+    "price": 119.99,
+    "stock": 0,
+    "rating": 4.7,
+    "tags": ["mechanical", "hot-swap", "compact"]
+  },
+  {
+    "sku": "KB-004",
+    "name": "Ergonomic Split Keyboard",
+    "description": "Split design, tenting adjustment, Cherry MX Brown switches, wrist rests included",
+    "category": "Keyboards",
+    "price": 179.99,
+    "stock": 8,
+    "rating": 4.6,
+    "tags": ["ergonomic", "split", "mechanical"]
+  },
+  {
+    "sku": "KB-005",
+    "name": "Budget Membrane Keyboard",
+    "description": "Spill-resistant, quiet keys, USB connection, full-size layout",
+    "category": "Keyboards",
+    "price": 19.99,
+    "stock": 150,
+    "rating": 3.8,
+    "tags": ["membrane", "budget", "quiet"]
+  },
+  {
+    "sku": "MS-001",
+    "name": "Gaming Mouse X",
+    "description": "16000 DPI optical sensor, 8 programmable buttons, adjustable weight",
+    "category": "Mice",
+    "price": 59.99,
+    "stock": 15,
+    "rating": 4.7,
+    "tags": ["gaming", "wired", "rgb"]
+  },
+  {
+    "sku": "MS-002",
+    "name": "Wireless Ergonomic Mouse",
+    "description": "Vertical design reduces wrist strain, Bluetooth + USB receiver, quiet clicks",
+    "category": "Mice",
+    "price": 39.99,
+    "stock": 30,
+    "rating": 4.4,
+    "tags": ["ergonomic", "wireless", "vertical"]
+  },
+  {
+    "sku": "MS-003",
+    "name": "Trackball Mouse",
+    "description": "34mm trackball, 3 customizable buttons, compatible with Windows/Mac/Linux",
+    "category": "Mice",
+    "price": 44.99,
+    "stock": 12,
+    "rating": 4.1,
+    "tags": ["trackball", "ergonomic", "wired"]
+  },
+  {
+    "sku": "MS-004",
+    "name": "Ultralight Gaming Mouse",
+    "description": "58g honeycomb design, paracord cable, PTFE feet, 12000 DPI",
+    "category": "Mice",
+    "price": 69.99,
+    "stock": 0,
+    "rating": 4.8,
+    "tags": ["gaming", "ultralight", "wired"]
+  },
+  {
+    "sku": "HS-001",
+    "name": "Studio Headset",
+    "description": "Active noise cancelling, 40mm drivers, 30hr battery, foldable design",
+    "category": "Headsets",
+    "price": 129.99,
+    "stock": 8,
+    "rating": 4.3,
+    "tags": ["noise-cancelling", "wireless", "foldable"]
+  },
+  {
+    "sku": "HS-002",
+    "name": "Gaming Headset 7.1",
+    "description": "Virtual 7.1 surround, detachable boom mic, memory foam ear cushions",
+    "category": "Headsets",
+    "price": 79.99,
+    "stock": 20,
+    "rating": 4.5,
+    "tags": ["gaming", "surround", "wired"]
+  },
+  {
+    "sku": "HS-003",
+    "name": "Wireless Earbuds Pro",
+    "description": "ANC, transparency mode, IPX5 waterproof, 8hr battery per charge",
+    "category": "Headsets",
+    "price": 149.99,
+    "stock": 35,
+    "rating": 4.6,
+    "tags": ["earbuds", "wireless", "anc"]
+  },
+  {
+    "sku": "MN-001",
+    "name": "UltraWide 34in Monitor",
+    "description": "3440x1440, IPS, 144Hz, USB-C with 90W PD, KVM switch",
+    "category": "Monitors",
+    "price": 499.99,
+    "stock": 5,
+    "rating": 4.7,
+    "tags": ["ultrawide", "ips", "usb-c"]
+  },
+  {
+    "sku": "MN-002",
+    "name": "4K 27in Monitor",
+    "description": "3840x2160, IPS, 60Hz, factory calibrated, USB-C hub",
+    "category": "Monitors",
+    "price": 349.99,
+    "stock": 10,
+    "rating": 4.4,
+    "tags": ["4k", "ips", "color-accurate"]
+  },
+  {
+    "sku": "MN-003",
+    "name": "Gaming Monitor 27in",
+    "description": "2560x1440, 240Hz, 1ms response, G-Sync compatible, HDR400",
+    "category": "Monitors",
+    "price": 399.99,
+    "stock": 0,
+    "rating": 4.8,
+    "tags": ["gaming", "high-refresh", "hdr"]
+  },
+  {
+    "sku": "MN-004",
+    "name": "Portable Monitor 15.6in",
+    "description": "1080p, USB-C powered, magnetic cover/stand, 350 nits",
+    "category": "Monitors",
+    "price": 189.99,
+    "stock": 18,
+    "rating": 4.2,
+    "tags": ["portable", "usb-c", "lightweight"]
+  },
+  {
+    "sku": "WC-001",
+    "name": "4K Webcam Pro",
+    "description": "4K30 / 1080p60, auto-framing, dual mics, privacy shutter",
+    "category": "Webcams",
+    "price": 129.99,
+    "stock": 22,
+    "rating": 4.5,
+    "tags": ["4k", "auto-framing", "privacy"]
+  },
+  {
+    "sku": "WC-002",
+    "name": "Streaming Webcam",
+    "description": "1080p60, ring light built-in, background blur, USB-A/C",
+    "category": "Webcams",
+    "price": 89.99,
+    "stock": 14,
+    "rating": 4.3,
+    "tags": ["streaming", "ring-light", "1080p"]
+  },
+  {
+    "sku": "WC-003",
+    "name": "Budget HD Webcam",
+    "description": "720p, clip mount, built-in mic, plug and play",
+    "category": "Webcams",
+    "price": 24.99,
+    "stock": 60,
+    "rating": 3.9,
+    "tags": ["budget", "720p", "plug-and-play"]
+  },
+  {
+    "sku": "CB-001",
+    "name": "USB-C Cable 2m",
+    "description": "Braided nylon, 100W PD, USB 3.2 Gen 2, 10Gbps data",
+    "category": "Cables & Adapters",
+    "price": 12.99,
+    "stock": 200,
+    "rating": 4.8,
+    "tags": ["usb-c", "charging", "braided"]
+  },
+  {
+    "sku": "CB-002",
+    "name": "HDMI 2.1 Cable 3m",
+    "description": "8K60 / 4K120, eARC, 48Gbps bandwidth, gold-plated connectors",
+    "category": "Cables & Adapters",
+    "price": 18.99,
+    "stock": 85,
+    "rating": 4.6,
+    "tags": ["hdmi", "8k", "earc"]
+  },
+  {
+    "sku": "CB-003",
+    "name": "USB-C Hub 7-in-1",
+    "description": "HDMI 4K, 3x USB-A 3.0, SD/microSD, 100W PD passthrough",
+    "category": "Cables & Adapters",
+    "price": 39.99,
+    "stock": 28,
+    "rating": 4.4,
+    "tags": ["hub", "usb-c", "multiport"]
+  },
+  {
+    "sku": "CB-004",
+    "name": "DisplayPort 1.4 Cable 2m",
+    "description": "4K144 / 8K60, VESA certified, latch connector",
+    "category": "Cables & Adapters",
+    "price": 14.99,
+    "stock": 45,
+    "rating": 4.5,
+    "tags": ["displayport", "4k", "certified"]
+  },
+  {
+    "sku": "CB-005",
+    "name": "Thunderbolt 4 Cable 1m",
+    "description": "40Gbps data, 100W PD, dual 4K display support",
+    "category": "Cables & Adapters",
+    "price": 34.99,
+    "stock": 0,
+    "rating": 4.7,
+    "tags": ["thunderbolt", "usb-c", "premium"]
+  },
+  {
+    "sku": "CB-006",
+    "name": "Lightning to USB-C Cable",
+    "description": "MFi certified, 1.2m, fast charging support",
+    "category": "Cables & Adapters",
+    "price": 9.99,
+    "stock": 120,
+    "rating": 4.2,
+    "tags": ["lightning", "apple", "mfi"]
+  },
+  {
+    "sku": "CB-007",
+    "name": "Ethernet Cat 6a Cable 5m",
+    "description": "10Gbps, shielded, snagless RJ45, flat design",
+    "category": "Cables & Adapters",
+    "price": 8.99,
+    "stock": 75,
+    "rating": 4.6,
+    "tags": ["ethernet", "cat6a", "shielded"]
+  },
+  {
+    "sku": "CB-008",
+    "name": "USB-C to VGA Adapter",
+    "description": "1080p60, plug and play, compact aluminum body",
+    "category": "Cables & Adapters",
+    "price": 15.99,
+    "stock": 33,
+    "rating": 3.9,
+    "tags": ["vga", "adapter", "usb-c"]
+  },
+  {
+    "sku": "CB-009",
+    "name": "Wireless Charging Pad",
+    "description": "15W Qi, LED indicator, compatible with all Qi devices, slim design",
+    "category": "Cables & Adapters",
+    "price": 19.99,
+    "stock": 50,
+    "rating": 4.1,
+    "tags": ["wireless-charging", "qi", "universal"]
+  },
+  {
+    "sku": "CB-010",
+    "name": "Cable Management Kit",
+    "description": "Cable clips, velcro ties, cable sleeve, under-desk tray",
+    "category": "Cables & Adapters",
+    "price": 24.99,
+    "stock": 40,
+    "rating": 4.3,
+    "tags": ["organization", "desk", "management"]
+  }
+]

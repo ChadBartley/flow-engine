@@ -1,0 +1,22 @@
+[package]
+name = "cleargate-storage-oss"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+sea-orm = { workspace = true }
+sea-orm-migration = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+cleargate-flow-engine = { path = "../cleargate-flow-engine", default-features = false }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+
+[lib]
+name = "cleargate_storage_oss"
+path = "src/lib.rs"

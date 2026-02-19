@@ -1,0 +1,11 @@
+[package]
+name = "test-echo-node"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = { workspace = true }

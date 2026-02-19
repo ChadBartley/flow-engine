@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "id": "math-agent",
+  "name": "Math Agent",
+  "version": "1.0",
+  "nodes": [
+    {
+      "instance_id": "llm",
+      "node_type": "llm_call",
+      "config": {
+        "provider": "ollama",
+        "model": "ministral-3:3b",
+        "system_prompt": "You are a math assistant. Use the 'add' tool for addition and the 'subtract' tool for subtraction. Always use tools — never compute answers yourself.",
+        "tools_from_graph": true
+      }
+    },
+    {
+      "instance_id": "check",
+      "node_type": "conditional",
+      "config": {}
+    },
+    {
+      "instance_id": "router",
+      "node_type": "tool_router",
+      "config": {}
+    },
+    {
+      "instance_id": "add_tool",
+      "node_type": "jq",
+      "config": {
+        "expression": "{role: \"tool\", tool_call_id: .id, name: .tool_name, content: ((.arguments.a + .arguments.b) | tostring)}"
+      }
+    },
+    {
+      "instance_id": "subtract_tool",
+      "node_type": "jq",
+      "config": {
+        "expression": "{role: \"tool\", tool_call_id: .id, name: .tool_name, content: ((.arguments.a - .arguments.b) | tostring)}"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from_node": "llm",
+      "from_port": "output",
+      "to_node": "check",
+      "to_port": "input"
+    },
+    {
+      "id": "e2",
+      "from_node": "check",
+      "from_port": "data",
+      "to_node": "router",
+      "to_port": "input",
+      "condition": {
+        "expression": "finish_reason == 'tool_calls'"
+      }
+    },
+    {
+      "id": "e3",
+      "from_node": "router",
+      "from_port": "output",
+      "to_node": "add_tool",
+      "to_port": "input"
+    },
+    {
+      "id": "e4",
+      "from_node": "add_tool",
+      "from_port": "output",
+      "to_node": "llm",
+      "to_port": "input"
+    },
+    {
+      "id": "e5",
+      "from_node": "router",
+      "from_port": "output",
+      "to_node": "subtract_tool",
+      "to_port": "input"
+    },
+    {
+      "id": "e6",
+      "from_node": "subtract_tool",
+      "from_port": "output",
+      "to_node": "llm",
+      "to_port": "input"
+    }
+  ],
+  "tool_definitions": {
+    "add": {
+      "name": "add",
+      "description": "Add two numbers together",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "a": { "type": "number", "description": "First number" },
+          "b": { "type": "number", "description": "Second number" }
+        },
+        "required": ["a", "b"]
+      },
+      "tool_type": { "kind": "node", "target_node_id": "add_tool" },
+      "metadata": {}
+    },
+    "subtract": {
+      "name": "subtract",
+      "description": "Subtract two numbers (a - b)",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "a": { "type": "number", "description": "Number to subtract from" },
+          "b": { "type": "number", "description": "Number to subtract" }
+        },
+        "required": ["a", "b"]
+      },
+      "tool_type": { "kind": "node", "target_node_id": "subtract_tool" },
+      "metadata": {}
+    }
+  },
+  "metadata": {
+    "description": "An agent that uses Ollama to answer math questions by calling add and subtract tools"
+  }
+}
