@@ -6,21 +6,45 @@ Examples demonstrating ClearGate's observability features with Node.js AI framew
 
 - Node.js 18+
 - [Ollama](https://ollama.ai/) running locally
-- Pull a model: `ollama pull qwen3:4b`
+- Pull the required models:
+  ```bash
+  ollama pull qwen3:4b        # used by langchain_example
+  ollama pull ministral-3:3b  # used by advanced_agent_example
+  ```
 
 ## Setup
 
-1. Build the ClearGate native library (from repo root):
+Run the setup script from this directory:
+
+```bash
+./setup.sh
+```
+
+This builds the Rust native addon, compiles the TypeScript SDK, and installs all example dependencies in one step.
+
+### Manual Setup
+
+If you prefer to run the steps individually:
+
+1. Build the native Rust addon (from repo root):
 
    ```bash
-   cd crates/cleargate-node
+   cargo build --release -p cleargate-node
+   cp target/release/libcleargate_node.so sdks/node/cleargate.node   # .dylib on macOS
+   ```
+
+2. Build the TypeScript SDK:
+
+   ```bash
+   cd sdks/node
+   npm install
    npm run build
    ```
 
-2. Install dependencies:
+3. Install example dependencies (from this directory):
 
    ```bash
-   npm install
+   npm install --install-links
    ```
 
 ## Running Examples
@@ -34,6 +58,9 @@ npm run langchain
 
 # LangGraph state graph
 npm run langgraph
+
+# Advanced multi-tool agent with full event capture
+npm run advanced
 ```
 
 ## Persistent Storage
@@ -46,3 +73,5 @@ Each example records LLM calls, tool invocations, and execution steps into a Cle
 
 - **Run data**: Metadata, timing, token usage, cost estimates
 - **Events**: Full sequence of LLM calls, tool calls, and state transitions
+
+The advanced example (`npm run advanced`) demonstrates the complete capture pattern: multiple tools, full event summary, and detailed run data output — matching the Python `advanced_agent_example.py`.

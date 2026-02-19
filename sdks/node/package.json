@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "cleargate.node"
   ],
   "scripts": {
     "build": "tsc",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@langchain/core": "^0.3.0",
+    "@types/node": "^20.0.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   },

@@ -56,18 +56,26 @@ impl FrameworkAdapter for LangChainAdapter {
                 let prompts = raw.get("prompts").cloned().unwrap_or_default();
                 let kwargs = serialized.get("kwargs");
 
-                // Model name: try kwargs paths first (OpenAI-style serialization),
-                // then parse from repr string (Ollama-style where kwargs is absent),
-                // then fall back to the last element of serialized.id.
-                let model = kwargs
-                    .and_then(|k| {
-                        k.get("model_name").or_else(|| k.get("model")).or_else(|| {
-                            k.get("kwargs")
-                                .and_then(|kk| kk.get("model_name").or_else(|| kk.get("model")))
-                        })
-                    })
+                // Model name: prefer explicit "model" field (sent by JS handler from
+                // invocationParams), then try kwargs paths (OpenAI-style serialization),
+                // then parse from repr string (Python Ollama-style), then fall back
+                // to the last element of serialized.id.
+                let model = raw
+                    .get("model")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string())
+                    .or_else(|| {
+                        kwargs
+                            .and_then(|k| {
+                                k.get("model_name").or_else(|| k.get("model")).or_else(|| {
+                                    k.get("kwargs").and_then(|kk| {
+                                        kk.get("model_name").or_else(|| kk.get("model"))
+                                    })
+                                })
+                            })
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                    })
                     .or_else(|| extract_model_from_repr(&serialized))
                     .or_else(|| {
                         serialized
@@ -77,20 +85,26 @@ impl FrameworkAdapter for LangChainAdapter {
                     })
                     .unwrap_or_else(|| "unknown".to_string());
 
-                // Provider: extract from serialized.id[0], stripping the
+                // Provider: prefer explicit "provider" field (sent by JS handler),
+                // then extract from serialized.id[0], stripping the
                 // "langchain_" / "langchain-" prefix if present (e.g.
                 // "langchain_ollama" → "ollama"). Falls back to "langchain".
-                let provider = serialized
-                    .get("id")
-                    .and_then(|ids| ids.as_array())
-                    .and_then(|arr| arr.first())
+                let provider = raw
+                    .get("provider")
                     .and_then(|v| v.as_str())
-                    .map(|s| {
-                        s.strip_prefix("langchain_")
-                            .or_else(|| s.strip_prefix("langchain-"))
-                            .unwrap_or(s)
-                    })
-                    .unwrap_or("langchain");
+                    .unwrap_or_else(|| {
+                        serialized
+                            .get("id")
+                            .and_then(|ids| ids.as_array())
+                            .and_then(|arr| arr.first())
+                            .and_then(|v| v.as_str())
+                            .map(|s| {
+                                s.strip_prefix("langchain_")
+                                    .or_else(|| s.strip_prefix("langchain-"))
+                                    .unwrap_or(s)
+                            })
+                            .unwrap_or("langchain")
+                    });
 
                 vec![AdapterEvent::LlmStart {
                     node_id: run_id,
@@ -169,10 +183,15 @@ impl FrameworkAdapter for LangChainAdapter {
             }
             "on_tool_end" => {
                 let output = raw.get("output").cloned().unwrap_or_default();
+                let tool_name = raw
+                    .get("tool_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
 
                 vec![AdapterEvent::ToolEnd {
                     node_id: run_id,
-                    tool_name: "unknown".into(),
+                    tool_name,
                     outputs: output,
                     duration_ms: raw.get("duration_ms").and_then(|v| v.as_u64()).unwrap_or(0),
                     timestamp: Utc::now(),
@@ -414,5 +433,81 @@ mod tests {
         let adapter = LangChainAdapter;
         let events = adapter.translate(json!({"callback": "on_something_else"}));
         assert!(events.is_empty());
+    }
+
+    #[test]
+    fn test_on_llm_start_explicit_model_and_provider() {
+        let adapter = LangChainAdapter;
+        // JS handler sends explicit model/provider from invocationParams
+        let raw = json!({
+            "callback": "on_llm_start",
+            "run_id": "run-js-ollama",
+            "model": "ministral-3:3b",
+            "provider": "ollama",
+            "serialized": {
+                "lc": 1,
+                "type": "not_implemented",
+                "id": ["langchain", "chat_models", "ChatOllama"]
+            },
+            "prompts": [{"role": "user", "content": "Hello"}]
+        });
+
+        let events = adapter.translate(raw);
+        assert_eq!(events.len(), 1);
+        if let AdapterEvent::LlmStart { request, .. } = &events[0] {
+            assert_eq!(request["model"], "ministral-3:3b");
+            assert_eq!(request["provider"], "ollama");
+        } else {
+            panic!("expected LlmStart");
+        }
+    }
+
+    #[test]
+    fn test_on_llm_start_explicit_fields_override_serialized() {
+        let adapter = LangChainAdapter;
+        // Explicit fields should take priority over kwargs
+        let raw = json!({
+            "callback": "on_llm_start",
+            "run_id": "run-override",
+            "model": "qwen3:4b",
+            "provider": "ollama",
+            "serialized": {
+                "id": ["langchain_openai", "chat_models", "ChatOpenAI"],
+                "kwargs": {"model_name": "gpt-4o"}
+            },
+            "prompts": ["Hello"]
+        });
+
+        let events = adapter.translate(raw);
+        assert_eq!(events.len(), 1);
+        if let AdapterEvent::LlmStart { request, .. } = &events[0] {
+            assert_eq!(request["model"], "qwen3:4b");
+            assert_eq!(request["provider"], "ollama");
+        } else {
+            panic!("expected LlmStart");
+        }
+    }
+
+    #[test]
+    fn test_on_tool_end_with_tool_name() {
+        let adapter = LangChainAdapter;
+        let raw = json!({
+            "callback": "on_tool_end",
+            "run_id": "run-tool-1",
+            "tool_name": "get_weather",
+            "output": "Sunny, 18°C"
+        });
+
+        let events = adapter.translate(raw);
+        assert_eq!(events.len(), 1);
+        if let AdapterEvent::ToolEnd {
+            tool_name, outputs, ..
+        } = &events[0]
+        {
+            assert_eq!(tool_name, "get_weather");
+            assert_eq!(outputs, "Sunny, 18°C");
+        } else {
+            panic!("expected ToolEnd");
+        }
     }
 }

@@ -1,7 +1,7 @@
 /**
  * LangGraph.js callback handler for Cleargate observability.
  *
- * Extends LangChain callbacks with node/edge tracking for graph execution.
+ * Extends `BaseCallbackHandler` with node/edge tracking for graph execution.
  *
  * @example
  * ```ts
@@ -13,6 +13,11 @@
  * ```
  */
 
+import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
+import type { Serialized } from "@langchain/core/load/serializable";
+import type { LLMResult } from "@langchain/core/outputs";
+import type { ChainValues } from "@langchain/core/utils/types";
+import type { BaseMessage } from "@langchain/core/messages";
 import { AdapterSession, type NativeAdapterSession } from "../native";
 
 function safeSerialize(obj: unknown): unknown {
@@ -23,16 +28,128 @@ function safeSerialize(obj: unknown): unknown {
   }
 }
 
-export class CleargateLangGraphHandler {
+const ROLE_MAP: Record<string, string> = {
+  human: "user",
+  ai: "assistant",
+  system: "system",
+  tool: "tool",
+  function: "function",
+  chat: "assistant",
+};
+
+function messagesToDicts(
+  messageLists: BaseMessage[][],
+): Record<string, unknown>[] {
+  const result: Record<string, unknown>[] = [];
+  for (const msgList of messageLists) {
+    for (const msg of msgList) {
+      const lcType = msg.getType();
+      const role = ROLE_MAP[lcType] ?? lcType;
+      const entry: Record<string, unknown> = { role, content: msg.content };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = msg as any;
+      if (raw.tool_calls?.length) {
+        entry.tool_calls = raw.tool_calls.map(
+          (tc: Record<string, unknown>) => ({
+            id: tc.id ?? "",
+            tool_name: tc.name ?? "",
+            arguments: safeSerialize(tc.args ?? {}),
+          }),
+        );
+      }
+      if (raw.tool_call_id) {
+        entry.tool_call_id = raw.tool_call_id;
+      }
+      result.push(entry);
+    }
+  }
+  return result;
+}
+
+function serializeLlmResult(result: LLMResult): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (result.generations) {
+    out.generations = result.generations.map((genList) =>
+      genList.map((gen) => {
+        const entry: Record<string, unknown> = { text: gen.text ?? "" };
+        if (gen.generationInfo) {
+          entry.generation_info = safeSerialize(gen.generationInfo);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = gen as any;
+        if (raw.message) {
+          if (raw.message.response_metadata) {
+            entry.generation_info = safeSerialize(
+              raw.message.response_metadata,
+            );
+          }
+          if (raw.message.usage_metadata) {
+            entry.usage_metadata = safeSerialize(raw.message.usage_metadata);
+          }
+        }
+        return entry;
+      }),
+    );
+  }
+  if (result.llmOutput) {
+    out.llm_output = safeSerialize(result.llmOutput);
+  }
+  return out;
+}
+
+/**
+ * Extract model name and provider from LangChain serialized data and invocation params.
+ * See langchain.ts for detailed rationale.
+ */
+function extractModelProvider(
+  llm: Serialized,
+  extraParams?: Record<string, unknown>,
+): { model: string; provider: string } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const invParams = (extraParams as any)?.invocation_params as
+    | Record<string, unknown>
+    | undefined;
+
+  const model =
+    (invParams?.model as string) ??
+    (invParams?.model_name as string) ??
+    (() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s = llm as any;
+      const kw = s.kwargs;
+      return (kw?.model_name ??
+        kw?.model ??
+        kw?.kwargs?.model_name ??
+        kw?.kwargs?.model) as string | undefined;
+    })() ??
+    (() => {
+      const ids = (llm as { id?: string[] }).id;
+      return Array.isArray(ids) ? ids[ids.length - 1] : undefined;
+    })() ??
+    "unknown";
+
+  const ids = (llm as { id?: string[] }).id;
+  const rawProvider =
+    Array.isArray(ids) && ids.length > 0 ? ids[0] : "langchain";
+  const provider = rawProvider.replace(/^langchain[_-]/, "") || "langchain";
+
+  return { model, provider };
+}
+
+export class CleargateLangGraphHandler extends BaseCallbackHandler {
+  name = "CleargateLangGraphHandler";
+
   private _session: NativeAdapterSession;
   private _ownsSession: boolean;
   private _llmStartTimes: Map<string, number> = new Map();
+  private _chatModelStarted: Set<string> = new Set();
   private _currentNode: string | null = null;
 
   constructor(
     sessionName = "langgraph",
     options?: { session?: NativeAdapterSession; storeUrl?: string },
   ) {
+    super();
     if (options?.session) {
       this._session = options.session;
       this._ownsSession = false;
@@ -51,17 +168,15 @@ export class CleargateLangGraphHandler {
   }
 
   handleChainStart(
-    chain: Record<string, unknown>,
-    inputs: Record<string, unknown>,
+    chain: Serialized,
+    inputs: ChainValues,
     runId: string,
     _parentRunId?: string,
     tags?: string[],
   ): void {
-    const idArr = chain.id as string[] | undefined;
+    const idArr = chain.id;
     const name =
-      (Array.isArray(idArr) ? idArr[idArr.length - 1] : null) ??
-      (chain.name as string) ??
-      "chain";
+      (Array.isArray(idArr) ? idArr[idArr.length - 1] : null) ?? "chain";
 
     let nodeName: string | null = null;
     for (const tag of tags ?? []) {
@@ -95,7 +210,7 @@ export class CleargateLangGraphHandler {
   }
 
   handleChainEnd(
-    outputs: Record<string, unknown>,
+    outputs: ChainValues,
     runId: string,
     _parentRunId?: string,
     tags?: string[],
@@ -116,37 +231,64 @@ export class CleargateLangGraphHandler {
   }
 
   handleLLMStart(
-    llm: Record<string, unknown>,
+    llm: Serialized,
     prompts: string[],
     runId: string,
+    _parentRunId?: string,
+    extraParams?: Record<string, unknown>,
   ): void {
+    if (this._chatModelStarted.has(runId)) {
+      return;
+    }
     this._llmStartTimes.set(runId, performance.now());
-    const kwargs = (llm.kwargs ?? {}) as Record<string, unknown>;
-    const model = (kwargs.model_name ?? kwargs.model ?? "unknown") as string;
+    const { model, provider } = extractModelProvider(llm, extraParams);
     this._session.onEvent({
       callback: "on_llm_start",
       node: this._currentNode ?? "llm",
-      request: { model, messages: prompts },
+      run_id: runId,
+      serialized: safeSerialize(llm),
+      prompts,
+      model,
+      provider,
     });
   }
 
-  handleLLMEnd(output: Record<string, unknown>, runId: string): void {
+  handleChatModelStart(
+    llm: Serialized,
+    messages: BaseMessage[][],
+    runId: string,
+    _parentRunId?: string,
+    extraParams?: Record<string, unknown>,
+  ): void {
+    this._chatModelStarted.add(runId);
+    this._llmStartTimes.set(runId, performance.now());
+    const { model, provider } = extractModelProvider(llm, extraParams);
+    this._session.onEvent({
+      callback: "on_llm_start",
+      node: this._currentNode ?? "llm",
+      run_id: runId,
+      serialized: safeSerialize(llm),
+      prompts: messagesToDicts(messages),
+      model,
+      provider,
+    });
+  }
+
+  handleLLMEnd(output: LLMResult, runId: string): void {
+    this._chatModelStarted.delete(runId);
     const start = this._llmStartTimes.get(runId);
     this._llmStartTimes.delete(runId);
     const durationMs = start ? Math.round(performance.now() - start) : 0;
     this._session.onEvent({
       callback: "on_llm_end",
       node: this._currentNode ?? "llm",
-      response: safeSerialize(output),
+      run_id: runId,
+      response: serializeLlmResult(output),
       duration_ms: durationMs,
     });
   }
 
-  handleToolStart(
-    tool: Record<string, unknown>,
-    input: string,
-    runId: string,
-  ): void {
+  handleToolStart(tool: Serialized, input: string, runId: string): void {
     const toolName = (tool.name ?? "unknown") as string;
     this._session.onEvent({
       callback: "node_start",

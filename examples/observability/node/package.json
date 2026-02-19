@@ -7,13 +7,15 @@
   "scripts": {
     "basic": "npx tsx src/basic_observe.ts",
     "langchain": "npx tsx src/langchain_example.ts",
-    "langgraph": "npx tsx src/langgraph_example.ts"
+    "langgraph": "npx tsx src/langgraph_example.ts",
+    "advanced": "npx tsx src/advanced_agent_example.ts"
   },
   "dependencies": {
-    "cleargate": "workspace:*",
+    "cleargate": "file:../../../sdks/node",
     "@langchain/core": "^0.3.0",
     "@langchain/ollama": "^0.2.0",
-    "@langchain/langgraph": "^0.2.0"
+    "@langchain/langgraph": "^0.2.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "tsx": "^4.0.0",

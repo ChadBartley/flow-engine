@@ -34,7 +34,7 @@ async function main() {
     storeUrl: "sqlite://cleargate_runs.db?mode=rwc",
   });
 
-  const llm = new ChatOllama({ model: "qwen3:4b", callbacks: [handler] });
+  const llm = new ChatOllama({ model: "qwen3:4b" });
   const llmWithTools = llm.bindTools(TOOLS);
 
   const messages: BaseMessage[] = [
@@ -78,7 +78,7 @@ async function main() {
   const counts: Record<string, number> = {};
   for (const evt of events) {
     const evtObj = evt as Record<string, unknown>;
-    const type = (evtObj.type as string) ?? "unknown";
+    const type = (evtObj.event_type as string) ?? (evtObj.type as string) ?? "unknown";
     counts[type] = (counts[type] ?? 0) + 1;
   }
   console.log("\nEvent summary:");

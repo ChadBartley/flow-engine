@@ -36,10 +36,10 @@ export interface NativeAdapterSession {
 }
 
 export interface NativeBinding {
-  ObserverSession: {
+  NapiObserverSession: {
     start(name: string, storeUrl?: string): NativeObserverSession;
   };
-  AdapterSession: {
+  NapiAdapterSession: {
     start(
       framework: string,
       name?: string,
@@ -61,4 +61,5 @@ try {
   );
 }
 
-export const { ObserverSession, AdapterSession } = binding;
+export const ObserverSession = binding.NapiObserverSession;
+export const AdapterSession = binding.NapiAdapterSession;
