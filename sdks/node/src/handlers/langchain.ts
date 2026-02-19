@@ -29,13 +29,17 @@ export class CleargateLangChainHandler {
 
   constructor(
     sessionName = "langchain",
-    options?: { session?: NativeAdapterSession },
+    options?: { session?: NativeAdapterSession; storeUrl?: string },
   ) {
     if (options?.session) {
       this._session = options.session;
       this._ownsSession = false;
     } else {
-      this._session = AdapterSession.start("langchain", sessionName);
+      this._session = AdapterSession.start(
+        "langchain",
+        sessionName,
+        options?.storeUrl,
+      );
       this._ownsSession = true;
     }
   }

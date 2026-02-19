@@ -61,7 +61,8 @@ internal static class Native
     [DllImport(LibName, EntryPoint = "cleargate_adapter_start", CharSet = CharSet.Ansi)]
     internal static extern ulong cleargate_adapter_start(
         [MarshalAs(UnmanagedType.LPUTF8Str)] string framework,
-        [MarshalAs(UnmanagedType.LPUTF8Str)] string? name);
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? name,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? storePath);
 
     [DllImport(LibName, EntryPoint = "cleargate_adapter_on_event", CharSet = CharSet.Ansi)]
     internal static extern int cleargate_adapter_on_event(

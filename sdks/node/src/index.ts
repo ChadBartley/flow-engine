@@ -26,7 +26,12 @@ import { ObserverSession, type NativeObserverSession } from "./native";
 
 /**
  * Start an observer session. Convenience function wrapping ObserverSession.start().
+ *
+ * @param storeUrl - Optional storage URL for persistence (e.g. `"sqlite://cleargate_runs.db?mode=rwc"`).
  */
-export function observe(name: string): NativeObserverSession {
-  return ObserverSession.start(name);
+export function observe(
+  name: string,
+  storeUrl?: string,
+): NativeObserverSession {
+  return ObserverSession.start(name, storeUrl);
 }

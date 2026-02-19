@@ -47,8 +47,8 @@ fn py_to_json(py: Python<'_>, obj: &PyObject) -> PyResult<serde_json::Value> {
 impl PyAdapterSession {
     /// Start a new adapter session for a given framework.
     #[staticmethod]
-    #[pyo3(signature = (framework, name=None))]
-    fn start(framework: &str, name: Option<&str>) -> PyResult<Self> {
+    #[pyo3(signature = (framework, name=None, store_path=None))]
+    fn start(framework: &str, name: Option<&str>, store_path: Option<&str>) -> PyResult<Self> {
         let adapter: Box<dyn cleargate_adapters::FrameworkAdapter> = match framework {
             "langchain" => Box::new(LangChainAdapter),
             "langgraph" => Box::new(LangGraphAdapter),
@@ -62,7 +62,15 @@ impl PyAdapterSession {
 
         let session_name = name.unwrap_or(framework);
 
-        let store: Arc<dyn RunStore> = Arc::new(InMemoryRunStore::new());
+        let store: Arc<dyn RunStore> = if let Some(url) = store_path {
+            let db = block_on(cleargate_storage_oss::connect(url))
+                .map_err(|e| PyRuntimeError::new_err(format!("DB connect failed: {e}")))?;
+            block_on(cleargate_storage_oss::run_migrations(&db))
+                .map_err(|e| PyRuntimeError::new_err(format!("DB migration failed: {e}")))?;
+            Arc::new(cleargate_storage_oss::SeaOrmRunStore::new(Arc::new(db)))
+        } else {
+            Arc::new(InMemoryRunStore::new())
+        };
 
         let config = ObserverConfig {
             run_store: Some(store.clone()),

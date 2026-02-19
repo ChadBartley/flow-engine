@@ -21,7 +21,24 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
 from cleargate import AdapterSession
-from cleargate.langchain import _safe_serialize
+from cleargate.langchain import _messages_to_dicts, _safe_serialize
+
+
+def _extract_model_from_repr(serialized: Dict[str, Any]) -> Optional[str]:
+    """Extract model name from repr string (e.g. ``model='ministral-3:3b'``)."""
+    repr_str = serialized.get("repr")
+    if not repr_str or not isinstance(repr_str, str):
+        return None
+    parts = repr_str.split("model=")
+    if len(parts) < 2:
+        return None
+    after = parts[1]
+    if not after or after[0] not in ("'", '"'):
+        return None
+    quote = after[0]
+    model = after[1:].split(quote)[0]
+    return model if model else None
+
 
 logger = logging.getLogger("cleargate.langgraph")
 
@@ -37,13 +54,16 @@ class CleargateLangGraphHandler(BaseCallbackHandler):
         session_name: str = "langgraph",
         *,
         session: Optional[AdapterSession] = None,
+        store_path: Optional[str] = None,
     ):
         super().__init__()
         if session is not None:
             self._session = session
             self._owns_session = False
         else:
-            self._session = AdapterSession.start("langgraph", session_name)
+            self._session = AdapterSession.start(
+                "langgraph", session_name, store_path=store_path
+            )
             self._owns_session = True
         self._llm_start_times: Dict[str, float] = {}
         self._current_node: Optional[str] = None
@@ -56,6 +76,7 @@ class CleargateLangGraphHandler(BaseCallbackHandler):
         run_id: Any,
         **kwargs: Any,
     ) -> None:
+        serialized = serialized or {}
         name = (
             serialized.get("id", [None])[-1]
             if isinstance(serialized.get("id"), list)
@@ -125,6 +146,7 @@ class CleargateLangGraphHandler(BaseCallbackHandler):
         run_id: Any,
         **kwargs: Any,
     ) -> None:
+        serialized = serialized or {}
         rid = str(run_id)
         self._llm_start_times[rid] = time.monotonic()
         model = (
@@ -137,6 +159,33 @@ class CleargateLangGraphHandler(BaseCallbackHandler):
                 "callback": "on_llm_start",
                 "node": self._current_node or "llm",
                 "request": {"model": model, "messages": prompts},
+            }
+        )
+
+    def on_chat_model_start(
+        self,
+        serialized: Dict[str, Any],
+        messages: List[List[Any]],
+        *,
+        run_id: Any,
+        **kwargs: Any,
+    ) -> None:
+        """Called for chat models instead of ``on_llm_start``."""
+        serialized = serialized or {}
+        rid = str(run_id)
+        self._llm_start_times[rid] = time.monotonic()
+        model = (
+            serialized.get("kwargs", {}).get("model_name")
+            or serialized.get("kwargs", {}).get("model")
+            or _extract_model_from_repr(serialized)
+            or "unknown"
+        )
+
+        self._session.on_event(
+            {
+                "callback": "on_llm_start",
+                "node": self._current_node or "llm",
+                "request": {"model": model, "messages": _messages_to_dicts(messages)},
             }
         )
 
@@ -167,6 +216,7 @@ class CleargateLangGraphHandler(BaseCallbackHandler):
         run_id: Any,
         **kwargs: Any,
     ) -> None:
+        serialized = serialized or {}
         tool_name = serialized.get("name", "unknown")
         self._session.on_event(
             {

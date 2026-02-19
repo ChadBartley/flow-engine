@@ -22,7 +22,7 @@ def call_ollama(prompt: str, model: str = "qwen3:4b") -> dict:
 
 
 def main():
-    with observe("basic-example") as session:
+    with observe("basic-example", store_path="sqlite://cleargate_runs.db?mode=rwc") as session:
         # Record a step
         session.record_step("setup", json.dumps({"model": "qwen3:4b"}))
 
@@ -53,7 +53,8 @@ def main():
         # Print run data
         run_data = session.get_run_data()
         print(f"Run ID: {session.run_id}")
-        print(f"Run data: {json.dumps(json.loads(run_data), indent=2)}")
+        print(f"Run data: {json.dumps(run_data, indent=2)}")
+        print("Run data persisted to cleargate_runs.db")
 
 
 if __name__ == "__main__":

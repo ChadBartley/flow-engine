@@ -1,0 +1,9 @@
+# ClearGate run database
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+.venv/

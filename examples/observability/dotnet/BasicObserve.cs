@@ -9,7 +9,7 @@ static class BasicObserve
 {
     public static void Run()
     {
-        using var session = ObserverSession.Start("basic-example");
+        using var session = ObserverSession.Start("basic-example", "sqlite://cleargate_runs.db?mode=rwc");
 
         // Record a step
         session.RecordStep("setup", JsonSerializer.Serialize(new { model = "qwen3:4b" }));
@@ -41,5 +41,24 @@ static class BasicObserve
 
         Console.WriteLine($"Run ID: {session.RunId}");
         Console.WriteLine($"Run data: {session.GetRunData()}");
+
+        // Print captured events
+        var eventsJson = session.GetEvents();
+        if (eventsJson != null)
+        {
+            var events = JsonSerializer.Deserialize<JsonElement[]>(eventsJson);
+            Console.WriteLine($"\nCaptured {events?.Length ?? 0} events");
+
+            if (events != null)
+            {
+                for (var i = 0; i < events.Length; i++)
+                {
+                    Console.WriteLine($"\n--- Event {i + 1} ---");
+                    Console.WriteLine(JsonSerializer.Serialize(events[i], new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+        }
+
+        Console.WriteLine("\nRun data persisted to cleargate_runs.db");
     }
 }

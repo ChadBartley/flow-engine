@@ -32,13 +32,17 @@ export class CleargateSemanticKernelHandler {
 
   constructor(
     sessionName = "semantic_kernel",
-    options?: { session?: NativeAdapterSession },
+    options?: { session?: NativeAdapterSession; storeUrl?: string },
   ) {
     if (options?.session) {
       this._session = options.session;
       this._ownsSession = false;
     } else {
-      this._session = AdapterSession.start("semantic_kernel", sessionName);
+      this._session = AdapterSession.start(
+        "semantic_kernel",
+        sessionName,
+        options?.storeUrl,
+      );
       this._ownsSession = true;
     }
   }

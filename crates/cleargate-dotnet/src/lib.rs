@@ -508,12 +508,16 @@ pub extern "C" fn cleargate_observer_destroy(handle: u64) {
 /// Start an adapter session. Returns a handle (>0) on success, 0 on error.
 /// `framework`: "langchain", "langgraph", or "semantic_kernel".
 ///
+/// When `store_path` is non-null (e.g. `"sqlite://runs.db?mode=rwc"`),
+/// events are persisted to the database. Otherwise uses in-memory storage.
+///
 /// # Safety
-/// `framework` and `name` must be valid null-terminated C strings or null.
+/// `framework`, `name`, and `store_path` must be valid null-terminated C strings or null.
 #[no_mangle]
 pub unsafe extern "C" fn cleargate_adapter_start(
     framework: *const c_char,
     name: *const c_char,
+    store_path: *const c_char,
 ) -> u64 {
     let Some(fw_str) = cstr_to_str(framework) else {
         return 0;
@@ -528,7 +532,22 @@ pub unsafe extern "C" fn cleargate_adapter_start(
 
     let session_name = cstr_to_str(name).unwrap_or(fw_str);
 
-    let store: Arc<dyn RunStore> = Arc::new(InMemoryRunStore::new());
+    let store: Arc<dyn RunStore> = if let Some(url) = cstr_to_str(store_path) {
+        let db = match block_on(cleargate_storage_oss::connect(url)) {
+            Ok(db) => db,
+            Err(e) => {
+                set_last_error(format!("DB connect failed: {e}"));
+                return 0;
+            }
+        };
+        if let Err(e) = block_on(cleargate_storage_oss::run_migrations(&db)) {
+            set_last_error(format!("DB migration failed: {e}"));
+            return 0;
+        }
+        Arc::new(cleargate_storage_oss::SeaOrmRunStore::new(Arc::new(db)))
+    } else {
+        Arc::new(InMemoryRunStore::new())
+    };
     let config = ObserverConfig {
         run_store: Some(store.clone()),
         ..Default::default()

@@ -21,7 +21,7 @@ public sealed class SemanticKernelFilter : IFunctionInvocationFilter, IPromptRen
     private readonly bool _ownsSession;
     private readonly Dictionary<string, long> _functionStartTimes = new();
 
-    public SemanticKernelFilter(string sessionName = "semantic_kernel", AdapterSession? session = null)
+    public SemanticKernelFilter(string sessionName = "semantic_kernel", AdapterSession? session = null, string? storePath = null)
     {
         if (session != null)
         {
@@ -30,7 +30,7 @@ public sealed class SemanticKernelFilter : IFunctionInvocationFilter, IPromptRen
         }
         else
         {
-            _session = AdapterSession.Start("semantic_kernel", sessionName);
+            _session = AdapterSession.Start("semantic_kernel", sessionName, storePath);
             _ownsSession = true;
         }
     }

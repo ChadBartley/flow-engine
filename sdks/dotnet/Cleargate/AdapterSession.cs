@@ -25,9 +25,10 @@ public sealed class AdapterSession : IDisposable
     /// </summary>
     /// <param name="framework">One of: "langchain", "langgraph", "semantic_kernel"</param>
     /// <param name="name">Optional session name (defaults to framework name)</param>
-    public static AdapterSession Start(string framework, string? name = null)
+    /// <param name="storePath">Optional storage URL for persistence (e.g. "sqlite://runs.db?mode=rwc")</param>
+    public static AdapterSession Start(string framework, string? name = null, string? storePath = null)
     {
-        var handle = Native.cleargate_adapter_start(framework, name);
+        var handle = Native.cleargate_adapter_start(framework, name, storePath);
         if (handle == 0)
             throw new CleargateException(Native.GetLastError() ?? $"Failed to start adapter session for {framework}");
 

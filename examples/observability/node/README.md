@@ -36,6 +36,10 @@ npm run langchain
 npm run langgraph
 ```
 
+## Persistent Storage
+
+All examples persist run data to a local SQLite database (`cleargate_runs.db`) using the `storeUrl` parameter. The `?mode=rwc` query parameter tells SQLite to create the file if it doesn't exist. Data accumulates across subsequent runs.
+
 ## What Gets Captured
 
 Each example records LLM calls, tool invocations, and execution steps into a ClearGate session. After running, you can inspect:

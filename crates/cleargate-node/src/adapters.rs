@@ -27,8 +27,15 @@ pub struct NapiAdapterSession {
 #[napi]
 impl NapiAdapterSession {
     /// Start a new adapter session for a given framework.
+    ///
+    /// When `store_url` is provided (e.g. `"sqlite://runs.db?mode=rwc"`),
+    /// events are persisted to the database. Otherwise uses in-memory storage.
     #[napi(factory)]
-    pub fn start(framework: String, name: Option<String>) -> Result<NapiAdapterSession> {
+    pub fn start(
+        framework: String,
+        name: Option<String>,
+        store_url: Option<String>,
+    ) -> Result<NapiAdapterSession> {
         let adapter: Box<dyn cleargate_adapters::FrameworkAdapter> = match framework.as_str() {
             "langchain" => Box::new(LangChainAdapter),
             "langgraph" => Box::new(LangGraphAdapter),
@@ -42,7 +49,15 @@ impl NapiAdapterSession {
 
         let session_name = name.as_deref().unwrap_or(&framework);
 
-        let store: Arc<dyn RunStore> = Arc::new(InMemoryRunStore::new());
+        let store: Arc<dyn RunStore> = if let Some(url) = store_url.as_deref() {
+            let db = block_on(cleargate_storage_oss::connect(url))
+                .map_err(|e| Error::from_reason(format!("DB connect failed: {e}")))?;
+            block_on(cleargate_storage_oss::run_migrations(&db))
+                .map_err(|e| Error::from_reason(format!("DB migration failed: {e}")))?;
+            Arc::new(cleargate_storage_oss::SeaOrmRunStore::new(Arc::new(db)))
+        } else {
+            Arc::new(InMemoryRunStore::new())
+        };
 
         let config = ObserverConfig {
             run_store: Some(store.clone()),

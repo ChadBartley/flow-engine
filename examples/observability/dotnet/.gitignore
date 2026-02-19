@@ -1,0 +1,8 @@
+# ClearGate run database
+*.db
+*.db-shm
+*.db-wal
+
+# .NET
+bin/
+obj/

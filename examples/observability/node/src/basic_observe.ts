@@ -21,7 +21,7 @@ async function callOllama(prompt: string, model = "qwen3:4b") {
 }
 
 async function main() {
-  const session = observe("basic-example");
+  const session = observe("basic-example", "sqlite://cleargate_runs.db?mode=rwc");
 
   // Record a step
   session.recordStep("setup", JSON.stringify({ model: "qwen3:4b" }));
@@ -53,9 +53,23 @@ async function main() {
   // Finish and print results
   session.finish();
 
-  const runData = JSON.parse(session.getRunData());
+  // getRunData() returns an object, no JSON.parse needed
+  const runData = session.getRunData();
   console.log(`Run ID: ${session.runId}`);
   console.log(`Run data: ${JSON.stringify(runData, null, 2)}`);
+
+  // Print captured events
+  const events = session.getEvents();
+  console.log(`\nCaptured ${events.length} events`);
+
+  for (let i = 0; i < events.length; i++) {
+    const evt = events[i] as Record<string, unknown>;
+    console.log(`\n--- Event ${i + 1} ---`);
+    console.log(`  Type: ${evt.type ?? "unknown"}`);
+    console.log(JSON.stringify(evt, null, 2));
+  }
+
+  console.log("\nRun data persisted to cleargate_runs.db");
 }
 
 main().catch(console.error);

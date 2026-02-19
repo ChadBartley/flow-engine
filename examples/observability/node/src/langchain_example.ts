@@ -8,10 +8,10 @@
  */
 
 import { ChatOllama } from "@langchain/ollama";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, ToolMessage, type BaseMessage } from "@langchain/core/messages";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { observe, CleargateLangChainHandler } from "cleargate";
+import { CleargateLangChainHandler } from "cleargate";
 
 const addTool = tool(
   async ({ a, b }: { a: number; b: number }) => {
@@ -24,25 +24,75 @@ const addTool = tool(
   }
 );
 
+const TOOLS = [addTool];
+const TOOLS_BY_NAME: Record<string, typeof addTool> = Object.fromEntries(
+  TOOLS.map((t) => [t.name, t])
+);
+
 async function main() {
-  const session = observe("langchain-example");
-  const handler = new CleargateLangChainHandler(session);
+  const handler = new CleargateLangChainHandler("langchain-example", {
+    storeUrl: "sqlite://cleargate_runs.db?mode=rwc",
+  });
 
   const llm = new ChatOllama({ model: "qwen3:4b", callbacks: [handler] });
-  const llmWithTools = llm.bindTools([addTool]);
+  const llmWithTools = llm.bindTools(TOOLS);
+
+  const messages: BaseMessage[] = [
+    new HumanMessage("What is 3 + 4? Use the add tool."),
+  ];
 
   console.log("Asking: What is 3 + 4?");
-  const response = await llmWithTools.invoke(
-    [new HumanMessage("What is 3 + 4? Use the add tool.")],
-    { callbacks: [handler] }
-  );
-  console.log(`Response: ${response.content}`);
 
-  session.finish();
+  // Agent loop: call LLM, execute any tool calls, repeat until done
+  while (true) {
+    const response = await llmWithTools.invoke(messages, {
+      callbacks: [handler],
+    });
+    messages.push(response);
 
-  const events = JSON.parse(session.getEvents());
+    const toolCalls = response.tool_calls ?? [];
+    if (toolCalls.length === 0) {
+      console.log(`Response: ${response.content}`);
+      break;
+    }
+
+    for (const tc of toolCalls) {
+      const toolFn = TOOLS_BY_NAME[tc.name];
+      const result = await toolFn.invoke(tc.args, {
+        callbacks: [handler],
+      });
+      messages.push(
+        new ToolMessage({ content: String(result), tool_call_id: tc.id! })
+      );
+    }
+  }
+
+  handler.finish();
+
+  // Print captured events — getEvents() returns object[], no JSON.parse needed
+  const events = handler.getEvents();
   console.log(`\nCaptured ${events.length} events`);
-  console.log(`Run ID: ${session.runId}`);
+  console.log(`Run ID: ${handler.runId}`);
+
+  // Summarise events by type
+  const counts: Record<string, number> = {};
+  for (const evt of events) {
+    const evtObj = evt as Record<string, unknown>;
+    const type = (evtObj.type as string) ?? "unknown";
+    counts[type] = (counts[type] ?? 0) + 1;
+  }
+  console.log("\nEvent summary:");
+  for (const [type, count] of Object.entries(counts)) {
+    console.log(`  ${type}: ${count}`);
+  }
+
+  // Print each event
+  for (let i = 0; i < events.length; i++) {
+    console.log(`\n--- Event ${i + 1} ---`);
+    console.log(JSON.stringify(events[i], null, 2));
+  }
+
+  console.log("\nRun data persisted to cleargate_runs.db");
 }
 
 main().catch(console.error);

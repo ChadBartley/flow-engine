@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Cleargate;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -11,7 +12,9 @@ static class SemanticKernelExample
 {
     public static async Task RunAsync()
     {
-        using var session = AdapterSession.Start("semantic_kernel", "sk-example");
+        using var session = AdapterSession.Start(
+            "semantic_kernel", "sk-example",
+            storePath: "sqlite://cleargate_runs.db?mode=rwc");
 
         var builder = Kernel.CreateBuilder();
 
@@ -41,5 +44,24 @@ static class SemanticKernelExample
 
         Console.WriteLine($"\nRun ID: {session.RunId}");
         Console.WriteLine($"Run data: {session.GetRunData()}");
+
+        // Print captured events
+        var eventsJson = session.GetEvents();
+        if (eventsJson != null)
+        {
+            var events = JsonSerializer.Deserialize<JsonElement[]>(eventsJson);
+            Console.WriteLine($"Captured {events?.Length ?? 0} events");
+
+            if (events != null)
+            {
+                for (var i = 0; i < events.Length; i++)
+                {
+                    Console.WriteLine($"\n--- Event {i + 1} ---");
+                    Console.WriteLine(JsonSerializer.Serialize(events[i], new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+        }
+
+        Console.WriteLine("\nRun data persisted to cleargate_runs.db");
     }
 }

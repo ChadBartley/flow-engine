@@ -6,11 +6,9 @@ using CleargateLangGraphHandler.
 Requires: Ollama running locally with qwen3:4b model.
 """
 
-import json
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, MessagesState, START, END
-from cleargate import observe
 from cleargate.langgraph import CleargateLangGraphHandler
 
 
@@ -31,8 +29,7 @@ def build_graph() -> StateGraph:
 
 
 def main():
-    with observe("langgraph-example") as session:
-        handler = CleargateLangGraphHandler(session=session)
+    with CleargateLangGraphHandler("langgraph-example", store_path="sqlite://cleargate_runs.db?mode=rwc") as handler:
         graph = build_graph()
 
         print("Asking: Tell me a short joke.")
@@ -44,9 +41,9 @@ def main():
         last_message = result["messages"][-1]
         print(f"Response: {last_message.content}")
 
-        events = session.get_events()
-        print(f"\nCaptured {len(json.loads(events))} events")
-        print(f"Run ID: {session.run_id}")
+    events = handler.get_events()
+    print(f"\nCaptured {len(events)} events")
+    print(f"Run ID: {handler.run_id}")
 
 
 if __name__ == "__main__":

@@ -10,34 +10,53 @@ Examples demonstrating ClearGate's observability features with Python AI framewo
 
 ## Setup
 
-1. Build the ClearGate native library (from repo root):
+1. Create a virtual environment and install dependencies:
 
    ```bash
-   cd crates/cleargate-python
+   cd examples/observability/python
+   uv venv
+   source .venv/bin/activate
+   uv pip install langchain langchain-ollama langgraph "semantic-kernel>=1.0.0"
+   ```
+
+2. Build and install the ClearGate native library into the active venv:
+
+   ```bash
+   cd ../../../crates/cleargate-python
    maturin develop --release
    ```
 
-2. Install dependencies:
+3. Return to the examples directory:
 
    ```bash
-   uv sync
+   cd ../../examples/observability/python
    ```
 
 ## Running Examples
 
 ```bash
 # Basic ObserverSession usage
-uv run python basic_observe.py
+python basic_observe.py
 
 # LangChain with tool-calling agent
-uv run python langchain_example.py
+python langchain_example.py
 
 # LangGraph state graph
-uv run python langgraph_example.py
+python langgraph_example.py
 
-# Semantic Kernel
-uv run python semantic_kernel_example.py
+# Semantic Kernel basic
+python semantic_kernel_example.py
+
+# Semantic Kernel with tools and full event capture
+python semantic_kernel_full_example.py
+
+# Advanced multi-tool agent with full event dump
+python advanced_agent_example.py
 ```
+
+## Persistent Storage
+
+All examples persist run data to a local SQLite database (`cleargate_runs.db`) using the `store_path` parameter. The `?mode=rwc` query parameter tells SQLite to create the file if it doesn't exist. Data accumulates across subsequent runs.
 
 ## What Gets Captured
 

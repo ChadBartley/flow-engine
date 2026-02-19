@@ -39,6 +39,103 @@ def _safe_serialize(obj: Any) -> Any:
         return str(obj)
 
 
+def _serialize_llm_result(result: Any) -> Dict[str, Any]:
+    """Extract structured data from a LangChain ``LLMResult``.
+
+    LLMResult is not directly JSON-serializable, so we pull the fields
+    the Rust adapter expects: ``generations``, ``llm_output``.
+    """
+    out: Dict[str, Any] = {}
+
+    # Extract generations — each is a list of ChatGeneration/ChatGenerationChunk
+    gens = getattr(result, "generations", None)
+    if gens:
+        serialized_gens = []
+        for gen_list in gens:
+            serialized_gen = []
+            for gen in gen_list:
+                entry: Dict[str, Any] = {"text": getattr(gen, "text", "")}
+                gen_info = getattr(gen, "generation_info", None)
+                if gen_info:
+                    entry["generation_info"] = _safe_serialize(gen_info)
+                msg = getattr(gen, "message", None)
+                if msg:
+                    metadata = getattr(msg, "response_metadata", {})
+                    if metadata:
+                        entry["generation_info"] = _safe_serialize(metadata)
+                    usage = getattr(msg, "usage_metadata", None)
+                    if usage:
+                        entry["usage_metadata"] = _safe_serialize(usage)
+                serialized_gen.append(entry)
+            serialized_gens.append(serialized_gen)
+        out["generations"] = serialized_gens
+
+    # Extract llm_output (may be None for some providers like Ollama)
+    llm_output = getattr(result, "llm_output", None)
+    if llm_output:
+        out["llm_output"] = _safe_serialize(llm_output)
+
+    return out
+
+
+# Map LangChain message type names to standard OpenAI-style roles.
+# The redactor and DiffEngine expect {"role": "user"|"assistant"|"system"|"tool", "content": ...}.
+_ROLE_MAP = {
+    "human": "user",
+    "HumanMessage": "user",
+    "HumanMessageChunk": "user",
+    "ai": "assistant",
+    "AIMessage": "assistant",
+    "AIMessageChunk": "assistant",
+    "system": "system",
+    "SystemMessage": "system",
+    "SystemMessageChunk": "system",
+    "tool": "tool",
+    "ToolMessage": "tool",
+    "ToolMessageChunk": "tool",
+    "function": "function",
+    "chat": "assistant",
+}
+
+
+def _messages_to_dicts(messages: List[List[Any]]) -> List[Dict[str, Any]]:
+    """Convert LangChain message objects to ``{role, content, ...}`` dicts.
+
+    Normalizes role names to the standard set expected by the write pipeline
+    redactor (``user``, ``assistant``, ``system``, ``tool``).
+    """
+    result = []
+    for msg_list in messages:
+        for msg in msg_list:
+            lc_type = getattr(msg, "type", "unknown")
+            role = _ROLE_MAP.get(lc_type, lc_type)
+            content = getattr(msg, "content", "")
+            entry: Dict[str, Any] = {"role": role, "content": content}
+            tool_calls = getattr(msg, "tool_calls", None)
+            if tool_calls:
+                entry["tool_calls"] = [
+                    {
+                        "id": tc.get("id", "")
+                        if isinstance(tc, dict)
+                        else getattr(tc, "id", ""),
+                        "tool_name": tc.get("name", "")
+                        if isinstance(tc, dict)
+                        else getattr(tc, "name", ""),
+                        "arguments": _safe_serialize(
+                            tc.get("args", {})
+                            if isinstance(tc, dict)
+                            else getattr(tc, "args", {})
+                        ),
+                    }
+                    for tc in tool_calls
+                ]
+            tool_call_id = getattr(msg, "tool_call_id", None)
+            if tool_call_id:
+                entry["tool_call_id"] = tool_call_id
+            result.append(entry)
+    return result
+
+
 class CleargateLangChainHandler(BaseCallbackHandler):
     """Drop-in LangChain callback handler that records to Cleargate."""
 
@@ -47,13 +144,16 @@ class CleargateLangChainHandler(BaseCallbackHandler):
         session_name: str = "langchain",
         *,
         session: Optional[AdapterSession] = None,
+        store_path: Optional[str] = None,
     ):
         super().__init__()
         if session is not None:
             self._session = session
             self._owns_session = False
         else:
-            self._session = AdapterSession.start("langchain", session_name)
+            self._session = AdapterSession.start(
+                "langchain", session_name, store_path=store_path
+            )
             self._owns_session = True
         self._llm_start_times: Dict[str, float] = {}
 
@@ -78,6 +178,34 @@ class CleargateLangChainHandler(BaseCallbackHandler):
         self._session.on_event(payload)
         logger.debug("on_llm_start on_event returned")
 
+    def on_chat_model_start(
+        self,
+        serialized: Dict[str, Any],
+        messages: List[List[Any]],
+        *,
+        run_id: Any,
+        **kwargs: Any,
+    ) -> None:
+        """Called for chat models instead of ``on_llm_start``.
+
+        Receives structured message objects rather than flattened prompt
+        strings, producing a ``{role, content}`` array in the event.
+        """
+        rid = str(run_id)
+        logger.debug("on_chat_model_start run_id=%s", rid)
+        self._llm_start_times[rid] = time.monotonic()
+
+        structured_messages = _messages_to_dicts(messages)
+
+        payload = {
+            "callback": "on_llm_start",
+            "run_id": rid,
+            "serialized": _safe_serialize(serialized),
+            "prompts": structured_messages,
+        }
+        self._session.on_event(payload)
+        logger.debug("on_chat_model_start on_event returned")
+
     def on_llm_end(
         self,
         response: LLMResult,
@@ -93,7 +221,7 @@ class CleargateLangChainHandler(BaseCallbackHandler):
         payload = {
             "callback": "on_llm_end",
             "run_id": rid,
-            "response": _safe_serialize(response),
+            "response": _serialize_llm_result(response),
             "duration_ms": duration_ms,
         }
         logger.debug("on_llm_end serialized, calling on_event")

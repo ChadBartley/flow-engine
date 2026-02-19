@@ -28,6 +28,10 @@ dotnet run -- basic
 dotnet run -- semantic-kernel
 ```
 
+## Persistent Storage
+
+The `BasicObserve` example persists run data to a local SQLite database (`cleargate_runs.db`) using the `storePath` parameter. The `?mode=rwc` query parameter tells SQLite to create the file if it doesn't exist. Data accumulates across subsequent runs. The Semantic Kernel example uses `AdapterSession`, which does not yet support persistent storage.
+
 ## What Gets Captured
 
 Each example records LLM calls, tool invocations, and execution steps into a ClearGate session. After running, you can inspect:

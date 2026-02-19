@@ -37,10 +37,14 @@ export interface NativeAdapterSession {
 
 export interface NativeBinding {
   ObserverSession: {
-    start(name: string): NativeObserverSession;
+    start(name: string, storeUrl?: string): NativeObserverSession;
   };
   AdapterSession: {
-    start(framework: string, name?: string): NativeAdapterSession;
+    start(
+      framework: string,
+      name?: string,
+      storeUrl?: string,
+    ): NativeAdapterSession;
   };
 }
 
