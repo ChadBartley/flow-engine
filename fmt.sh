@@ -15,21 +15,21 @@ else
 fi
 
 echo "Formatting TypeScript/JavaScript code..."
-if command -v npx &> /dev/null && [ -d "packages/cleargate" ]; then
-    if [ -f "packages/cleargate/node_modules/.bin/prettier" ]; then
-        npx --prefix packages/cleargate prettier --write "packages/cleargate/src/**/*.ts"
+if command -v npx &> /dev/null && [ -d "sdks/node" ]; then
+    if [ -f "sdks/node/node_modules/.bin/prettier" ]; then
+        npx --prefix sdks/node prettier --write "sdks/node/src/**/*.ts"
     elif command -v prettier &> /dev/null; then
-        prettier --write "packages/cleargate/src/**/*.ts"
+        prettier --write "sdks/node/src/**/*.ts"
     else
         echo "  prettier not installed, skipping TypeScript formatting"
     fi
 else
-    echo "  npx not available or packages/cleargate not found, skipping TypeScript formatting"
+    echo "  npx not available or sdks/node not found, skipping TypeScript formatting"
 fi
 
 echo "Formatting C# code..."
-if command -v dotnet &> /dev/null && [ -d "dotnet/Cleargate" ]; then
-    dotnet format dotnet/Cleargate/Cleargate.csproj --no-restore 2>/dev/null || echo "  dotnet format failed, skipping"
+if command -v dotnet &> /dev/null && [ -d "sdks/dotnet/Cleargate" ]; then
+    dotnet format sdks/dotnet/Cleargate/Cleargate.csproj --no-restore 2>/dev/null || echo "  dotnet format failed, skipping"
 else
     echo "  dotnet not installed, skipping C# formatting"
 fi

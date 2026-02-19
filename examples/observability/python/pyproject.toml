@@ -1,0 +1,16 @@
+[project]
+name = "cleargate-python-examples"
+version = "0.1.0"
+description = "ClearGate observability examples for Python"
+requires-python = ">=3.9"
+dependencies = [
+    "cleargate[all]",
+    "langchain>=0.3.0",
+    "langchain-ollama>=0.3.0",
+    "langgraph>=0.4.0",
+    "semantic-kernel>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

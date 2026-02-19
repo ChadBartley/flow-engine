@@ -4,9 +4,9 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dotnet", "dotnet", "{71E6E750-85FD-B5BC-4321-E01377EC6231}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cleargate", "dotnet\Cleargate\Cleargate.csproj", "{1376E13B-9483-2E59-0EEC-98B2D962F7C3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cleargate", "sdks\dotnet\Cleargate\Cleargate.csproj", "{1376E13B-9483-2E59-0EEC-98B2D962F7C3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cleargate.Tests", "dotnet\Cleargate.Tests\Cleargate.Tests.csproj", "{3C44DA5C-D9E8-07B5-958B-6EF9AD5499DC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cleargate.Tests", "sdks\dotnet\Cleargate.Tests\Cleargate.Tests.csproj", "{3C44DA5C-D9E8-07B5-958B-6EF9AD5499DC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
