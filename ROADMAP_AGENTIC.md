@@ -53,22 +53,33 @@ Dedicated `McpCallNode` instead of modifying `ToolRouterNode`. ToolRouterNode st
 
 ---
 
-## O2: Structured Output
+## O2: Structured Output ✅ COMPLETE
 
 **Impact**: High — directly improves agent reliability.
-**Scope**: Small (~1 week)
+**Status**: Complete — 9 new tests (20 total in llm_call), all quality gates pass.
 
-### What Gets Built
+### What Was Built
 
-- JSON schema validation on LLM responses (via `serde_json` + `jsonschema` crate)
-- Auto-retry on parse failure (configurable max retries)
-- `LlmCallNode` `"output_schema"` config field — when set, validates response and retries if invalid
-- `response_format` passthrough to providers that support native structured output (config field already exists in `LlmCallNode`)
+- **`StructuredOutputConfig`** type in `types/llm.rs` — `schema`, `max_retries` (default 2), `strict` (default true)
+- **JSON schema validation** on LLM responses using `jsonschema` crate (feature-gated `structured-output`)
+- **Auto-retry loop** — on validation failure, appends the failed response + error feedback as conversation messages and re-calls the provider; respects `max_retries`
+- **`output_schema` config field** on `LlmCallNode` — when set, validates response content against the schema
+- **`strict` mode** — when `true`, auto-sets `response_format` to `{"type": "json_schema", "json_schema": {"schema": ...}}` (OpenAI format) so providers with native structured output support enforce the schema at generation time
+- **All attempts recorded** — every LLM call (including retries) is recorded via `record_llm_call` for replay and cost tracking
+- **Works with both streaming and non-streaming** paths
+
+### Key Details for Next Agent
+
+- `structured-output` feature gate: `Cargo.toml` feature `structured-output = ["dep:jsonschema"]`, included in `default` features
+- `jsonschema = "0.28"` added to workspace `Cargo.toml`
+- `validate_structured_output()` helper is `#[cfg(feature = "structured-output")]` — parses string content as JSON, then validates against schema
+- `#[allow(unused_mut)]` on `response_format`, `attempts`, `last_validation_error`, `current_messages` — only mutated inside `#[cfg(feature = "structured-output")]` blocks
+- The retry loop rebuilds `LlmRequest` with updated messages each iteration (includes prior failed response + error feedback)
+- `StructuredOutputConfig` uses `#[serde(default = "...")]` for `max_retries` and `strict` fields
 
 ### Files
 
-- **Modify:** `flow/nodes/llm_call.rs`, `flow/types.rs`
-- **Add dep:** `jsonschema` (feature-gated)
+- **Modified:** `Cargo.toml` (workspace), `crates/cleargate-flow-engine/Cargo.toml`, `src/types/llm.rs`, `src/nodes/llm_call.rs`
 
 ---
 

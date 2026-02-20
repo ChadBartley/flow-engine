@@ -4,13 +4,14 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["dylib", "jq", "cron", "http-node", "mcp"]
+default = ["dylib", "jq", "cron", "http-node", "mcp", "structured-output"]
 dylib = []
 jq = []
 cron = []
 http-node = []
 mcp = []
 schemars = ["dep:schemars"]
+structured-output = ["dep:jsonschema"]
 test-support = []
 
 [dependencies]
@@ -59,6 +60,7 @@ jq-rs = { workspace = true }
 
 # Feature-gated dependencies
 schemars = { workspace = true, optional = true }
+jsonschema = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }

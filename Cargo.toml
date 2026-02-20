@@ -62,6 +62,9 @@ rand = "0.9"
 # JSON Schema generation
 schemars = { version = "0.8", features = ["derive", "chrono"] }
 
+# JSON Schema validation
+jsonschema = "0.28"
+
 # Async traits
 async-trait = "0.1"
 

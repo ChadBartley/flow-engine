@@ -1,4 +1,4 @@
-//! LLM invocation and streaming types.
+//! LLM invocation, streaming, and structured output types.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -103,6 +103,40 @@ pub struct LlmInvocationRecord {
     pub request: LlmRequest,
     pub response: LlmResponse,
     pub timestamp: DateTime<Utc>,
+}
+
+// ---------------------------------------------------------------------------
+// Structured output validation
+// ---------------------------------------------------------------------------
+
+/// Configuration for validating LLM responses against a JSON Schema.
+///
+/// When attached to an `LlmCallNode`, the engine validates the response content
+/// against the provided schema and automatically retries with feedback on failure.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename_all = "snake_case")]
+pub struct StructuredOutputConfig {
+    /// The JSON Schema that the LLM response must conform to.
+    pub schema: serde_json::Value,
+
+    /// Maximum number of retry attempts when validation fails (default: 2).
+    #[serde(default = "default_max_retries")]
+    pub max_retries: u8,
+
+    /// When `true`, also sets `response_format` on the provider request so that
+    /// providers with native structured-output support (e.g. OpenAI) can enforce
+    /// the schema at generation time (default: `true`).
+    #[serde(default = "default_strict")]
+    pub strict: bool,
+}
+
+fn default_max_retries() -> u8 {
+    2
+}
+
+fn default_strict() -> bool {
+    true
 }
 
 // ---------------------------------------------------------------------------
