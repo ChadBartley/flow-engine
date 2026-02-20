@@ -5,16 +5,15 @@ using Microsoft.SemanticKernel.ChatCompletion;
 
 /// <summary>
 /// Semantic Kernel observability example with ClearGate.
-/// Uses SemanticKernelFilter to auto-capture SK function invocations.
+/// Uses SemanticKernelFilter to auto-capture SK function invocations
+/// and InstrumentedChatCompletionService to auto-capture LLM calls.
 /// Requires: Ollama running locally with qwen3:4b model.
 /// </summary>
 static class SemanticKernelExample
 {
     public static async Task RunAsync()
     {
-        using var session = AdapterSession.Start(
-            "semantic_kernel", "sk-example",
-            storePath: "sqlite://cleargate_runs.db?mode=rwc");
+        using var filter = new SemanticKernelFilter("sk-example", storePath: "sqlite://cleargate_runs.db?mode=rwc");
 
         var builder = Kernel.CreateBuilder();
 
@@ -29,28 +28,31 @@ static class SemanticKernelExample
 
         var kernel = builder.Build();
 
-        // Add ClearGate filter
-        var filter = new SemanticKernelFilter(session);
+        // Add ClearGate filters for auto-capture of function invocations and prompts
         kernel.FunctionInvocationFilters.Add(filter);
+        kernel.PromptRenderFilters.Add(filter);
 
-        var chatService = kernel.GetRequiredService<IChatCompletionService>();
+        // Wrap the chat service to auto-capture LLM request/response data
+        var rawChatService = kernel.GetRequiredService<IChatCompletionService>();
+        var chatService = filter.Instrument(rawChatService, model: "qwen3:4b", provider: "ollama");
+
         var history = new ChatHistory();
         history.AddUserMessage("What is the capital of France? Answer briefly.");
 
-        var result = await chatService.GetChatMessageContentAsync(history, kernel: kernel);
-        Console.WriteLine($"Response: {result}");
+        var result = await chatService.GetChatMessageContentsAsync(history, kernel: kernel);
+        Console.WriteLine($"Response: {result[0].Content}");
 
-        session.Finish();
+        filter.Finish();
 
-        Console.WriteLine($"\nRun ID: {session.RunId}");
-        Console.WriteLine($"Run data: {session.GetRunData()}");
+        Console.WriteLine($"\nRun ID: {filter.RunId}");
+        Console.WriteLine($"Run data: {filter.GetRunData()}");
 
         // Print captured events
-        var eventsJson = session.GetEvents();
+        var eventsJson = filter.GetEvents();
         if (eventsJson != null)
         {
             var events = JsonSerializer.Deserialize<JsonElement[]>(eventsJson);
-            Console.WriteLine($"Captured {events?.Length ?? 0} events");
+            Console.WriteLine($"\nCaptured {events?.Length ?? 0} events");
 
             if (events != null)
             {

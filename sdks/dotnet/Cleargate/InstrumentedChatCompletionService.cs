@@ -14,12 +14,21 @@ internal sealed class InstrumentedChatCompletionService : IChatCompletionService
 {
     private readonly IChatCompletionService _inner;
     private readonly AdapterSession _session;
+    private readonly string _model;
+    private readonly string _provider;
     private int _callIndex;
 
-    public InstrumentedChatCompletionService(IChatCompletionService inner, AdapterSession session)
+    public InstrumentedChatCompletionService(
+        IChatCompletionService inner,
+        AdapterSession session,
+        string? model = null,
+        string? provider = null)
     {
         _inner = inner;
         _session = session;
+        _model = model
+            ?? (inner.Attributes.TryGetValue("ModelId", out var mid) && mid is string m ? m : "unknown");
+        _provider = provider ?? "unknown";
     }
 
     public IReadOnlyDictionary<string, object?> Attributes => _inner.Attributes;
@@ -105,7 +114,7 @@ internal sealed class InstrumentedChatCompletionService : IChatCompletionService
         });
     }
 
-    private static object BuildRequest(ChatHistory chatHistory, PromptExecutionSettings? settings)
+    private object BuildRequest(ChatHistory chatHistory, PromptExecutionSettings? settings)
     {
         var messages = chatHistory.Select(m => new
         {
@@ -113,10 +122,14 @@ internal sealed class InstrumentedChatCompletionService : IChatCompletionService
             content = m.Content,
         }).ToArray();
 
+        // Allow per-request model override via execution settings
+        var model = settings?.ModelId ?? _model;
+
         return new
         {
             messages,
-            model = settings?.ModelId,
+            model,
+            provider = _provider,
         };
     }
 

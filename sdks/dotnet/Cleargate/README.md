@@ -60,8 +60,11 @@ kernel.FunctionInvocationFilters.Add(filter);
 kernel.PromptRenderFilters.Add(filter);
 
 // Instrument the chat service — captures every LLM call with full request/response
-// This is critical for ReplayEngine and DiffEngine
-var chatService = filter.Instrument(kernel.GetRequiredService<IChatCompletionService>());
+// Pass model/provider explicitly for reliable metadata, or omit to auto-detect
+var chatService = filter.Instrument(
+    kernel.GetRequiredService<IChatCompletionService>(),
+    model: "gpt-4o",
+    provider: "openai");
 
 // kernel.InvokeAsync triggers filters automatically
 var result = await kernel.InvokeAsync(promptFn);
@@ -144,7 +147,7 @@ kernel.PromptRenderFilters.Add(filter);
 |--------|-------------|
 | `IFunctionInvocationFilter` | Auto-captures function invocations (args, result, duration) |
 | `IPromptRenderFilter` | Auto-captures prompt rendering (template → rendered text) |
-| `Instrument(IChatCompletionService)` | Wraps a chat service to capture every LLM request/response |
+| `Instrument(service, model?, provider?)` | Wraps a chat service to capture every LLM request/response. Optional `model`/`provider` override auto-detection. |
 | `OnFunctionInvoking(plugin, function, args?)` | Manual: record function start |
 | `OnFunctionInvoked(plugin, function, result?, durationMs?)` | Manual: record function completion |
 | `OnPromptRendering(template)` | Manual: record prompt template |

@@ -111,6 +111,45 @@ public class OllamaIntegrationTests
     }
 
     [Fact]
+    public async Task Instrument_WithExplicitModelAndProvider_CapturesInRequest()
+    {
+        var builder = Kernel.CreateBuilder();
+        builder.AddOllamaChatCompletion(Model, new Uri(OllamaEndpoint));
+        var kernel = builder.Build();
+
+        using var filter = new SemanticKernelFilter("ollama-explicit-params-test");
+
+        var rawService = kernel.GetRequiredService<IChatCompletionService>();
+        var instrumented = filter.Instrument(rawService, model: "qwen3:4b", provider: "ollama");
+
+        var history = new ChatHistory();
+        history.AddUserMessage("Reply with exactly: hello");
+
+        var response = await instrumented.GetChatMessageContentsAsync(history);
+        Assert.NotEmpty(response);
+
+        filter.Finish("completed");
+
+        var eventsJson = filter.GetEvents();
+        Assert.NotNull(eventsJson);
+
+        var events = JsonDocument.Parse(eventsJson);
+        for (var i = 0; i < events.RootElement.GetArrayLength(); i++)
+        {
+            var evt = events.RootElement[i];
+            if (evt.TryGetProperty("event_type", out var et) &&
+                et.GetString() == "llm_invocation" &&
+                evt.TryGetProperty("request", out var req))
+            {
+                Assert.Equal("ollama", req.GetProperty("provider").GetString());
+                Assert.Equal("qwen3:4b", req.GetProperty("model").GetString());
+                return;
+            }
+        }
+        Assert.Fail("No llm_invocation event with request found");
+    }
+
+    [Fact]
     public async Task Instrument_CapturesStreamingCall()
     {
         var builder = Kernel.CreateBuilder();

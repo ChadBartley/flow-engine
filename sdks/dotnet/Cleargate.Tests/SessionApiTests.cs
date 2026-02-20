@@ -55,8 +55,16 @@ public class SessionApiTests
     {
         var type = typeof(SemanticKernelFilter);
 
-        // LLM call instrumentation
-        Assert.NotNull(type.GetMethod("Instrument"));
+        // LLM call instrumentation — accepts optional model/provider overrides
+        var instrument = type.GetMethod("Instrument");
+        Assert.NotNull(instrument);
+        var parameters = instrument!.GetParameters();
+        Assert.Equal(3, parameters.Length);
+        Assert.Equal("service", parameters[0].Name);
+        Assert.Equal("model", parameters[1].Name);
+        Assert.True(parameters[1].IsOptional);
+        Assert.Equal("provider", parameters[2].Name);
+        Assert.True(parameters[2].IsOptional);
 
         // Manual methods
         Assert.NotNull(type.GetMethod("OnFunctionInvoking"));

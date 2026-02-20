@@ -36,8 +36,8 @@ public sealed class ObserverSession : IDisposable
     public void RecordLlmCall(string nodeId, object request, object response)
     {
         ThrowIfFinished();
-        var reqJson = JsonSerializer.Serialize(request);
-        var respJson = JsonSerializer.Serialize(response);
+        var reqJson = request is string s1 ? s1 : JsonSerializer.Serialize(request);
+        var respJson = response is string s2 ? s2 : JsonSerializer.Serialize(response);
         var result = Native.cleargate_observer_record_llm_call(_handle, nodeId, reqJson, respJson);
         if (result != 0)
             throw new CleargateException(Native.GetLastError() ?? "Failed to record LLM call");
@@ -47,8 +47,8 @@ public sealed class ObserverSession : IDisposable
     public void RecordToolCall(string toolName, object inputs, object outputs, ulong durationMs)
     {
         ThrowIfFinished();
-        var inputsJson = JsonSerializer.Serialize(inputs);
-        var outputsJson = JsonSerializer.Serialize(outputs);
+        var inputsJson = inputs is string s3 ? s3 : JsonSerializer.Serialize(inputs);
+        var outputsJson = outputs is string s4 ? s4 : JsonSerializer.Serialize(outputs);
         var result = Native.cleargate_observer_record_tool_call(
             _handle, toolName, inputsJson, outputsJson, durationMs);
         if (result != 0)
@@ -59,7 +59,7 @@ public sealed class ObserverSession : IDisposable
     public void RecordStep(string stepName, object data)
     {
         ThrowIfFinished();
-        var dataJson = JsonSerializer.Serialize(data);
+        var dataJson = data is string s5 ? s5 : JsonSerializer.Serialize(data);
         var result = Native.cleargate_observer_record_step(_handle, stepName, dataJson);
         if (result != 0)
             throw new CleargateException(Native.GetLastError() ?? "Failed to record step");

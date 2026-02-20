@@ -44,8 +44,8 @@ public sealed class SemanticKernelFilter : IFunctionInvocationFilter, IPromptRen
     /// Use this to capture data needed by ReplayEngine and DiffEngine even when
     /// calling the chat service directly (outside <c>kernel.InvokeAsync</c>).
     /// </summary>
-    public IChatCompletionService Instrument(IChatCompletionService service)
-        => new InstrumentedChatCompletionService(service, _session);
+    public IChatCompletionService Instrument(IChatCompletionService service, string? model = null, string? provider = null)
+        => new InstrumentedChatCompletionService(service, _session, model, provider);
 
     /// <summary>
     /// Called by the SK runtime around each function invocation.

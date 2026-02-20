@@ -1,45 +1,77 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Cleargate;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 /// <summary>
-/// Basic observability example using ObserverSession directly.
-/// Records LLM calls, tool calls, and steps manually.
+/// Basic observability example using ObserverSession with Semantic Kernel.
+/// Makes a real LLM call to Ollama and manually records the request/response.
+/// Requires: Ollama running locally with qwen3:4b model.
 /// </summary>
 static class BasicObserve
 {
-    public static void Run()
+    public static async Task RunAsync()
     {
         using var session = ObserverSession.Start("basic-example", "sqlite://cleargate_runs.db?mode=rwc");
 
-        // Record a step
-        session.RecordStep("setup", JsonSerializer.Serialize(new { model = "qwen3:4b" }));
+        const string prompt = "What is 2 + 2? Answer in one word.";
 
-        // Simulate an LLM call and record it
-        var request = JsonSerializer.Serialize(new
-        {
-            model = "qwen3:4b",
-            messages = new[] { new { role = "user", content = "What is 2 + 2?" } },
-        });
+        // Build a Semantic Kernel with Ollama's OpenAI-compatible endpoint
+        var builder = Kernel.CreateBuilder();
+#pragma warning disable SKEXP0010
+        builder.AddOpenAIChatCompletion(
+            modelId: "qwen3:4b",
+            apiKey: "ollama",
+            endpoint: new Uri("http://localhost:11434/v1")
+        );
+#pragma warning restore SKEXP0010
 
-        var response = JsonSerializer.Serialize(new
+        var kernel = builder.Build();
+        var chatService = kernel.GetRequiredService<IChatCompletionService>();
+
+        const string model = "qwen3:4b";
+        const string provider = "ollama";
+
+        session.RecordStep("setup", new { model, provider });
+
+        var history = new ChatHistory();
+        history.AddUserMessage(prompt);
+
+        // Record the request, make the real call, record the response
+        var request = new
         {
-            model = "qwen3:4b",
-            message = new { role = "assistant", content = "4" },
-        });
+            provider,
+            model,
+            messages = new[] { new { role = "user", content = prompt } },
+        };
+
+        var sw = Stopwatch.StartNew();
+        var result = await chatService.GetChatMessageContentAsync(history, kernel: kernel);
+        sw.Stop();
+
+        var response = new
+        {
+            model,
+            content = result.Content ?? "",
+            finish_reason = "stop",
+            latency_ms = sw.ElapsedMilliseconds,
+        };
 
         session.RecordLlmCall("ollama-chat", request, response);
 
         // Record a tool call
         session.RecordToolCall(
             "calculator",
-            JsonSerializer.Serialize(new { expression = "2 + 2" }),
-            JsonSerializer.Serialize(new { result = 4 }),
+            new { expression = "2 + 2" },
+            new { result = 4 },
             5
         );
 
         session.Finish();
 
-        Console.WriteLine($"Run ID: {session.RunId}");
+        Console.WriteLine($"Response: {result.Content}");
+        Console.WriteLine($"\nRun ID: {session.RunId}");
         Console.WriteLine($"Run data: {session.GetRunData()}");
 
         // Print captured events
