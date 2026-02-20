@@ -16,7 +16,9 @@ from semantic_kernel.connectors.ai.open_ai import (
     OpenAIChatCompletion,
     OpenAIChatPromptExecutionSettings,
 )
-from semantic_kernel.connectors.ai.function_choice_behavior import FunctionChoiceBehavior
+from semantic_kernel.connectors.ai.function_choice_behavior import (
+    FunctionChoiceBehavior,
+)
 from semantic_kernel.contents import ChatHistory
 from semantic_kernel.functions.kernel_function_decorator import kernel_function
 
@@ -26,7 +28,9 @@ from cleargate.semantic_kernel import CleargateSKFilter
 class WeatherPlugin:
     """Simulated weather lookup plugin."""
 
-    @kernel_function(name="get_weather", description="Get the current weather for a city.")
+    @kernel_function(
+        name="get_weather", description="Get the current weather for a city."
+    )
     def get_weather(self, city: Annotated[str, "The city to get weather for"]) -> str:
         weather = {
             "london": "Cloudy, 12°C, 80% humidity",
@@ -78,7 +82,9 @@ async def main():
 
         # Add ClearGate filters for auto-capture
         kernel.add_filter("function_invocation", sk_filter.function_invocation_filter)
-        kernel.add_filter("auto_function_invocation", sk_filter.auto_function_invocation_filter)
+        kernel.add_filter(
+            "auto_function_invocation", sk_filter.auto_function_invocation_filter
+        )
 
         # Configure auto tool calling
         settings = OpenAIChatPromptExecutionSettings(

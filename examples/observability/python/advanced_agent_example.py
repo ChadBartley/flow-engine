@@ -93,9 +93,7 @@ def stream_agent_step(llm_with_tools, messages, handler):
     """
     collected = None
     token_count = 0
-    for chunk in llm_with_tools.stream(
-        messages, config={"callbacks": [handler]}
-    ):
+    for chunk in llm_with_tools.stream(messages, config={"callbacks": [handler]}):
         # Accumulate chunks into a single message
         if collected is None:
             collected = chunk
@@ -151,13 +149,9 @@ def main():
             for tc in response.tool_calls:
                 print(f"  Tool call: {tc['name']}({json.dumps(tc['args'])})")
                 tool_fn = TOOLS_BY_NAME[tc["name"]]
-                result = tool_fn.invoke(
-                    tc["args"], config={"callbacks": [handler]}
-                )
+                result = tool_fn.invoke(tc["args"], config={"callbacks": [handler]})
                 print(f"  Result: {result}")
-                messages.append(
-                    ToolMessage(content=str(result), tool_call_id=tc["id"])
-                )
+                messages.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
 
     # Session is finished after context manager exits — print captured data
     events = handler.get_events()

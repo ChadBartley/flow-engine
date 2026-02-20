@@ -89,6 +89,98 @@ internal static class Native
     // Memory
     [DllImport(LibName, EntryPoint = "cleargate_free_string")]
     internal static extern void cleargate_free_string(IntPtr ptr);
+}
+
+/// <summary>
+/// P/Invoke bindings for engine orchestration functions.
+/// </summary>
+internal static class EngineNative
+{
+    private const string LibName = "cleargate_dotnet";
+
+    // EngineBuilder
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_new")]
+    internal static extern ulong cleargate_engine_builder_new();
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_flow_store_path", CharSet = CharSet.Ansi)]
+    internal static extern int cleargate_engine_builder_flow_store_path(
+        ulong handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string path);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_run_store_path", CharSet = CharSet.Ansi)]
+    internal static extern int cleargate_engine_builder_run_store_path(
+        ulong handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string path);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_run_store_url", CharSet = CharSet.Ansi)]
+    internal static extern int cleargate_engine_builder_run_store_url(
+        ulong handle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string url);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_max_traversals")]
+    internal static extern int cleargate_engine_builder_max_traversals(ulong handle, uint value);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_crash_recovery")]
+    internal static extern int cleargate_engine_builder_crash_recovery(
+        ulong handle,
+        [MarshalAs(UnmanagedType.U1)] bool enabled);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_build")]
+    internal static extern ulong cleargate_engine_builder_build(ulong builderHandle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_builder_destroy")]
+    internal static extern void cleargate_engine_builder_destroy(ulong handle);
+
+    // Engine
+    [DllImport(LibName, EntryPoint = "cleargate_engine_execute", CharSet = CharSet.Ansi)]
+    internal static extern ulong cleargate_engine_execute(
+        ulong engineHandle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string flowId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? inputsJson);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_execute_graph", CharSet = CharSet.Ansi)]
+    internal static extern ulong cleargate_engine_execute_graph(
+        ulong engineHandle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string graphJson,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string? inputsJson);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_provide_input", CharSet = CharSet.Ansi)]
+    internal static extern int cleargate_engine_provide_input(
+        ulong engineHandle,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string runId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string nodeId,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string inputJson);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_node_catalog")]
+    internal static extern IntPtr cleargate_engine_node_catalog(ulong engineHandle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_shutdown")]
+    internal static extern void cleargate_engine_shutdown(ulong engineHandle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_engine_destroy")]
+    internal static extern void cleargate_engine_destroy(ulong engineHandle);
+
+    // Execution
+    [DllImport(LibName, EntryPoint = "cleargate_execution_get_run_id")]
+    internal static extern IntPtr cleargate_execution_get_run_id(ulong handle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_execution_next_event")]
+    internal static extern IntPtr cleargate_execution_next_event(ulong handle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_execution_cancel")]
+    internal static extern int cleargate_execution_cancel(ulong handle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_execution_wait")]
+    internal static extern IntPtr cleargate_execution_wait(ulong handle);
+
+    [DllImport(LibName, EntryPoint = "cleargate_execution_destroy")]
+    internal static extern void cleargate_execution_destroy(ulong handle);
+
+    /// <summary>Marshal a native string pointer to a managed string and free the native memory.</summary>
+    internal static string? MarshalAndFree(IntPtr ptr)
+    {
+        return Native.MarshalAndFree(ptr);
+    }
 
     /// <summary>
     /// Marshal a native string pointer to a managed string and free the native memory.

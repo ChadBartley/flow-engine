@@ -6,6 +6,10 @@ edition.workspace = true
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+default = ["engine"]
+engine = []
+
 [dependencies]
 napi = { version = "3", features = ["async", "napi9", "serde-json"] }
 napi-derive = "3"
@@ -14,6 +18,8 @@ cleargate-adapters = { path = "../cleargate-adapters" }
 cleargate-storage-oss = { path = "../cleargate-storage-oss" }
 tokio = { workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
 
 [build-dependencies]
 napi-build = "2"

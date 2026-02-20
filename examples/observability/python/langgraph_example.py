@@ -29,7 +29,9 @@ def build_graph() -> StateGraph:
 
 
 def main():
-    with CleargateLangGraphHandler("langgraph-example", store_path="sqlite://cleargate_runs.db?mode=rwc") as handler:
+    with CleargateLangGraphHandler(
+        "langgraph-example", store_path="sqlite://cleargate_runs.db?mode=rwc"
+    ) as handler:
         graph = build_graph()
 
         print("Asking: Tell me a short joke.")

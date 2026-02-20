@@ -1,8 +1,12 @@
 //! Cleargate .NET bindings via C ABI (P/Invoke).
 //!
-//! Exposes `extern "C"` functions for observer and adapter sessions.
+//! Exposes `extern "C"` functions for observer and adapter sessions,
+//! plus engine orchestration (behind the `engine` feature).
 //! Uses `OnceLock<Runtime>` + `block_on()` pattern (same as Python crate).
 //! Handle-based session management via `HashMap<u64, Wrapper>` behind `Mutex`.
+
+#[cfg(feature = "engine")]
+mod engine_ffi;
 
 use std::collections::{BTreeMap, HashMap};
 use std::ffi::{CStr, CString};
@@ -26,7 +30,7 @@ use cleargate_flow_engine::types::{LlmRequest, LlmResponse, RunStatus};
 
 static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 
-fn runtime() -> &'static tokio::runtime::Runtime {
+pub(crate) fn runtime() -> &'static tokio::runtime::Runtime {
     RUNTIME.get_or_init(|| {
         tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -35,7 +39,7 @@ fn runtime() -> &'static tokio::runtime::Runtime {
     })
 }
 
-fn block_on<F: std::future::Future>(fut: F) -> F::Output {
+pub(crate) fn block_on<F: std::future::Future>(fut: F) -> F::Output {
     runtime().block_on(fut)
 }
 
@@ -43,7 +47,7 @@ fn block_on<F: std::future::Future>(fut: F) -> F::Output {
 // Handle storage
 // ---------------------------------------------------------------------------
 
-static NEXT_HANDLE: AtomicU64 = AtomicU64::new(1);
+pub(crate) static NEXT_HANDLE: AtomicU64 = AtomicU64::new(1);
 
 fn observer_sessions() -> &'static Mutex<HashMap<u64, ObserverWrapper>> {
     static SESSIONS: OnceLock<Mutex<HashMap<u64, ObserverWrapper>>> = OnceLock::new();
@@ -75,7 +79,7 @@ thread_local! {
     static LAST_ERROR: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
 }
 
-fn set_last_error(msg: String) {
+pub(crate) fn set_last_error(msg: String) {
     LAST_ERROR.with(|e| *e.borrow_mut() = Some(msg));
 }
 
@@ -97,7 +101,7 @@ pub extern "C" fn cleargate_last_error() -> *mut c_char {
 // ---------------------------------------------------------------------------
 
 /// Convert a C string pointer to a `&str`. Returns `None` if null or invalid UTF-8.
-unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> Option<&'a str> {
+pub(crate) unsafe fn cstr_to_str<'a>(ptr: *const c_char) -> Option<&'a str> {
     if ptr.is_null() {
         return None;
     }
@@ -113,7 +117,7 @@ fn status_from_str(s: &str) -> RunStatus {
     }
 }
 
-fn string_to_c(s: String) -> *mut c_char {
+pub(crate) fn string_to_c(s: String) -> *mut c_char {
     match CString::new(s) {
         Ok(cs) => cs.into_raw(),
         Err(_) => std::ptr::null_mut(),

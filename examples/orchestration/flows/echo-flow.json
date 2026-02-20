@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "echo-flow",
+  "name": "Echo Flow",
+  "version": "1.0",
+  "nodes": [
+    {
+      "instance_id": "transform",
+      "node_type": "jq",
+      "config": {
+        "expression": "{message: (\"Echo: \" + (.message // \"hello\"))}"
+      }
+    }
+  ],
+  "edges": [],
+  "tool_definitions": {},
+  "metadata": {
+    "description": "Simple echo flow using jq node — requires no LLM provider"
+  }
+}

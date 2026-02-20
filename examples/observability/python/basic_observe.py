@@ -22,23 +22,29 @@ def call_ollama(prompt: str, model: str = "qwen3:4b") -> dict:
 
 
 def main():
-    with observe("basic-example", store_path="sqlite://cleargate_runs.db?mode=rwc") as session:
+    with observe(
+        "basic-example", store_path="sqlite://cleargate_runs.db?mode=rwc"
+    ) as session:
         # Record a step
         session.record_step("setup", json.dumps({"model": "qwen3:4b"}))
 
         # Make an LLM call and record it
         prompt = "What is 2 + 2? Answer in one word."
-        request_data = json.dumps({
-            "model": "qwen3:4b",
-            "messages": [{"role": "user", "content": prompt}],
-        })
+        request_data = json.dumps(
+            {
+                "model": "qwen3:4b",
+                "messages": [{"role": "user", "content": prompt}],
+            }
+        )
 
         result = call_ollama(prompt)
 
-        response_data = json.dumps({
-            "model": result.get("model", "qwen3:4b"),
-            "message": result.get("message", {}),
-        })
+        response_data = json.dumps(
+            {
+                "model": result.get("model", "qwen3:4b"),
+                "message": result.get("message", {}),
+            }
+        )
 
         session.record_llm_call("ollama-chat", request_data, response_data)
 

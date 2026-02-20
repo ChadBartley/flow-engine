@@ -30,6 +30,12 @@ from typing import Any, Callable, Optional, TypeVar
 
 from cleargate._native import AdapterSession, ObserverSession
 
+# Engine orchestration classes (available when built with the "engine" feature).
+try:
+    from cleargate._native import Engine, EngineBuilder, ExecutionHandle
+except ImportError:
+    pass
+
 # Configure cleargate logger based on CLEARGATE_DEBUG env var.
 # NullHandler prevents propagation to root logger by default.
 _logger = logging.getLogger("cleargate")
@@ -46,6 +52,9 @@ __all__ = [
     "observe",
     "trace",
     "get_active_session",
+    "EngineBuilder",
+    "Engine",
+    "ExecutionHandle",
 ]
 
 F = TypeVar("F", bound=Callable[..., Any])

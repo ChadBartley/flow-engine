@@ -30,7 +30,9 @@ TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 
 
 def main():
-    with CleargateLangChainHandler("langchain-example", store_path="sqlite://cleargate_runs.db?mode=rwc") as handler:
+    with CleargateLangChainHandler(
+        "langchain-example", store_path="sqlite://cleargate_runs.db?mode=rwc"
+    ) as handler:
         llm = ChatOllama(model="qwen3:4b", callbacks=[handler])
         llm_with_tools = llm.bind_tools(TOOLS)
 

@@ -22,6 +22,16 @@ export { CleargateLangChainHandler } from "./handlers/langchain";
 export { CleargateLangGraphHandler } from "./handlers/langgraph";
 export { CleargateSemanticKernelHandler } from "./handlers/semantic-kernel";
 
+export {
+  streamEvents,
+  type NativeEngine,
+  type NativeEngineBuilder,
+  type NativeExecutionHandle,
+  type WriteEvent,
+  type NodeHandler,
+  type LlmProvider,
+} from "./engine";
+
 import { ObserverSession, type NativeObserverSession } from "./native";
 
 /**

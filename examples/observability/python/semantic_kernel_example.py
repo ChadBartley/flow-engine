@@ -9,13 +9,18 @@ Requires: Ollama running locally with qwen3:4b model.
 import asyncio
 from openai import AsyncOpenAI
 from semantic_kernel import Kernel
-from semantic_kernel.connectors.ai.open_ai import OpenAIChatCompletion, OpenAIChatPromptExecutionSettings
+from semantic_kernel.connectors.ai.open_ai import (
+    OpenAIChatCompletion,
+    OpenAIChatPromptExecutionSettings,
+)
 from semantic_kernel.contents import ChatHistory
 from cleargate.semantic_kernel import CleargateSKFilter
 
 
 async def main():
-    with CleargateSKFilter("semantic-kernel-example", store_path="sqlite://cleargate_runs.db?mode=rwc") as sk_filter:
+    with CleargateSKFilter(
+        "semantic-kernel-example", store_path="sqlite://cleargate_runs.db?mode=rwc"
+    ) as sk_filter:
         kernel = Kernel()
 
         # Ollama exposes an OpenAI-compatible API — pass a pre-configured client

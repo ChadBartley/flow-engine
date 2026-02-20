@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "simple-responder",
+  "name": "Simple Responder",
+  "version": "1.0",
+  "nodes": [
+    {
+      "instance_id": "llm",
+      "node_type": "llm_call",
+      "config": {
+        "provider": "ollama",
+        "model": "llama3.2:1b",
+        "system_prompt": "You are a helpful assistant. Respond concisely."
+      }
+    }
+  ],
+  "edges": [],
+  "tool_definitions": {},
+  "metadata": {
+    "description": "Single LLM node — the simplest possible flow"
+  }
+}

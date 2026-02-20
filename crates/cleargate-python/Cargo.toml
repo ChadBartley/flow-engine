@@ -7,6 +7,10 @@ edition.workspace = true
 name = "cleargate_native"
 crate-type = ["cdylib"]
 
+[features]
+default = ["engine"]
+engine = []
+
 [dependencies]
 pyo3 = { version = "0.23", features = ["abi3-py39", "extension-module"] }
 cleargate-flow-engine = { path = "../cleargate-flow-engine" }
@@ -15,3 +19,6 @@ cleargate-storage-oss = { path = "../cleargate-storage-oss" }
 tokio = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
