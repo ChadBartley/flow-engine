@@ -11,6 +11,7 @@ use tokio::sync::{broadcast, mpsc};
 use super::edges::resolve_inputs;
 use super::run::RunContext;
 use crate::node_ctx::{HumanInputRegistry, NodeCtx, NodeEvent};
+use crate::tool_registry::ToolRegistry;
 use crate::traits::{
     FlowLlmProvider, NodeHandler, ObservabilityProvider, QueueProvider, SecretsProvider,
     SpanStatus, StateStore,
@@ -46,7 +47,7 @@ pub(super) fn spawn_node(
     ctx: &RunContext,
     node_outputs: &HashMap<String, Value>,
     incoming: &HashMap<String, Vec<&Edge>>,
-    tool_defs: &Arc<Vec<ToolDef>>,
+    tool_registry: &ToolRegistry,
     fan_out_index: Option<u32>,
     override_inputs: Option<Value>,
 ) -> Option<tokio::task::JoinHandle<NodeResult>> {
@@ -69,7 +70,25 @@ pub(super) fn spawn_node(
     let observability = Arc::clone(&ctx.observability);
     let llm_providers = Arc::clone(&ctx.llm_providers);
     let http_client = ctx.http_client.clone();
-    let tool_defs = Arc::clone(tool_defs);
+    // Produce per-node tool snapshot, applying allowlist/permission filtering
+    // when the `dynamic-tools` feature is enabled.
+    let tool_defs = {
+        #[cfg(feature = "dynamic-tools")]
+        {
+            let snap = if let Some(ref access) = node_instance.tool_access {
+                tool_registry
+                    .snapshot_filtered(access.allowed_tools.as_ref(), &access.granted_permissions)
+            } else {
+                tool_registry.snapshot()
+            };
+            Arc::new(snap)
+        }
+        #[cfg(not(feature = "dynamic-tools"))]
+        {
+            Arc::new(tool_registry.snapshot())
+        }
+    };
+    let tool_registry = tool_registry.clone();
     let human_input_registry = Arc::clone(&ctx.human_input_registry);
     #[cfg(feature = "mcp")]
     let mcp_registry = Arc::clone(&ctx.mcp_registry);
@@ -94,6 +113,7 @@ pub(super) fn spawn_node(
             llm_providers,
             http_client,
             tool_defs,
+            tool_registry,
             timeout_ms,
             retry,
             fan_out_index,
@@ -123,6 +143,7 @@ async fn execute_node(
     llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
     http_client: reqwest::Client,
     tool_defs: Arc<Vec<ToolDef>>,
+    tool_registry: ToolRegistry,
     timeout_ms: u64,
     retry: RetryPolicy,
     fan_out_index: Option<u32>,
@@ -169,6 +190,7 @@ async fn execute_node(
             Arc::clone(&llm_providers),
             #[cfg(feature = "mcp")]
             Arc::clone(&mcp_registry),
+            tool_registry.clone(),
         );
 
         let node_start = std::time::Instant::now();

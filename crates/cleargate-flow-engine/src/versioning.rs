@@ -192,7 +192,7 @@ mod tests {
     use crate::defaults::FileFlowStore;
     use crate::types::{NodeInstance, ToolDef, ToolType, GRAPH_SCHEMA_VERSION};
     use serde_json::json;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     /// Helper: build a minimal GraphDef.
     fn make_graph(id: &str, tool_defs: BTreeMap<String, ToolDef>) -> GraphDef {
@@ -217,6 +217,7 @@ mod tests {
                 target_node_id: "n1".into(),
             },
             metadata: BTreeMap::new(),
+            permissions: BTreeSet::new(),
         }
     }
 
@@ -297,12 +298,14 @@ mod tests {
             node_type: "llm_call".into(),
             config: json!({"model": "gpt-4o", "temperature": 0.7}),
             position: None,
+            tool_access: None,
         }]);
         let graph_b = make_graph_with_nodes(vec![NodeInstance {
             instance_id: "n1".into(),
             node_type: "llm_call".into(),
             config: json!({"model": "claude-sonnet", "temperature": 0.7}),
             position: None,
+            tool_access: None,
         }]);
 
         assert_ne!(
@@ -319,12 +322,14 @@ mod tests {
             node_type: "llm_call".into(),
             config: json!({"model": "gpt-4o", "api_key": "sk-old-value"}),
             position: None,
+            tool_access: None,
         }]);
         let graph_b = make_graph_with_nodes(vec![NodeInstance {
             instance_id: "n1".into(),
             node_type: "llm_call".into(),
             config: json!({"model": "gpt-4o", "api_key": "sk-new-value"}),
             position: None,
+            tool_access: None,
         }]);
 
         assert_eq!(

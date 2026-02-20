@@ -4,10 +4,10 @@ use std::collections::{HashMap, HashSet};
 
 use futures::stream::FuturesUnordered;
 use serde_json::Value;
-use std::sync::Arc;
 
 use super::node::{spawn_node, NodeOutcome, NodeResult};
 use super::run::RunContext;
+use crate::tool_registry::ToolRegistry;
 use crate::types::*;
 
 /// Tracks the state of fan-out instances for a single node.
@@ -76,7 +76,7 @@ pub(super) fn spawn_ready_nodes(
     ctx: &RunContext,
     node_outputs: &HashMap<String, Value>,
     incoming: &HashMap<String, Vec<&Edge>>,
-    tool_defs: &Arc<Vec<ToolDef>>,
+    tool_registry: &ToolRegistry,
     running: &mut FuturesUnordered<tokio::task::JoinHandle<NodeResult>>,
     running_set: &mut HashSet<String>,
     completed: &mut HashSet<String>,
@@ -104,7 +104,7 @@ pub(super) fn spawn_ready_nodes(
                     ctx,
                     node_outputs,
                     incoming,
-                    tool_defs,
+                    tool_registry,
                     Some(i as u32),
                     Some(item),
                 ) {
@@ -118,7 +118,7 @@ pub(super) fn spawn_ready_nodes(
                 ctx,
                 node_outputs,
                 incoming,
-                tool_defs,
+                tool_registry,
                 None,
                 None,
             ) {

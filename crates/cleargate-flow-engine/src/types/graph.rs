@@ -1,7 +1,7 @@
 //! Graph schema types — the contract between UI and engine.
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::{PortType, Sensitivity, GRAPH_SCHEMA_VERSION};
 
@@ -49,6 +49,30 @@ pub struct NodeInstance {
     pub config: serde_json::Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<(f64, f64)>,
+    /// Per-node tool access control. When set and the `dynamic-tools`
+    /// feature is enabled, restricts which tools this node can see and
+    /// what permission labels the node holds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_access: Option<NodeToolAccess>,
+}
+
+/// Per-node tool access control for the `dynamic-tools` feature.
+///
+/// When attached to a [`NodeInstance`], restricts which tools the node can
+/// see and what permission labels the node holds for accessing
+/// permission-gated tools.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[serde(rename_all = "snake_case")]
+pub struct NodeToolAccess {
+    /// Allowlist of tool names. `None` means all tools are visible
+    /// (subject to permission checks).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub allowed_tools: Option<BTreeSet<String>>,
+    /// Permission labels this node holds. A tool is visible only if its
+    /// required permissions are a subset of these.
+    #[serde(default)]
+    pub granted_permissions: BTreeSet<String>,
 }
 
 /// A directed connection between two node ports.
@@ -133,6 +157,11 @@ pub struct ToolDef {
     /// BTreeMap for deterministic serialization.
     #[serde(default)]
     pub metadata: BTreeMap<std::string::String, serde_json::Value>,
+    /// Permission labels required to access this tool. Empty means
+    /// unrestricted (any node can use it). Only enforced when the
+    /// `dynamic-tools` feature is enabled.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub permissions: BTreeSet<String>,
 }
 
 /// How the engine dispatches tool execution.

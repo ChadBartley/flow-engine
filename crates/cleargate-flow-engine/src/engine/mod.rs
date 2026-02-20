@@ -565,12 +565,14 @@ mod tests {
                     node_type: "echo".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "b".into(),
                     node_type: "echo".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![Edge {
@@ -748,6 +750,7 @@ mod tests {
                 node_type: "slow_echo".into(),
                 config: json!({}),
                 position: None,
+                tool_access: None,
             }],
             edges: vec![],
             metadata: BTreeMap::new(),

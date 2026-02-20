@@ -17,6 +17,7 @@ use super::fanout::{handle_fan_out_completion, spawn_ready_nodes, FanOutState};
 use super::node::{spawn_node, NodeOutcome, NodeResult};
 use crate::node_ctx::HumanInputRegistry;
 use crate::runtime::ExecutionSession;
+use crate::tool_registry::ToolRegistry;
 use crate::traits::{
     FlowLlmProvider, NodeHandler, ObservabilityProvider, QueueProvider, SecretsProvider, StateStore,
 };
@@ -69,7 +70,8 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
     let mut fan_out_states: HashMap<String, FanOutState> = HashMap::new();
     let mut cancelled = false;
 
-    // Tool definitions from the graph, merged with MCP-discovered tools.
+    // Tool registry — single source of truth for available tools.
+    // Populated from graph-defined tools and MCP-discovered tools.
     #[allow(unused_mut)]
     let mut all_tools: Vec<ToolDef> = ctx.graph.tool_definitions.values().cloned().collect();
 
@@ -85,7 +87,7 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
         }
     }
 
-    let tool_defs: Arc<Vec<ToolDef>> = Arc::new(all_tools);
+    let tool_registry = ToolRegistry::from_tools(all_tools);
 
     // Seed entry nodes with the trigger inputs.
     for entry in &entry_nodes {
@@ -104,7 +106,7 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
             &ctx,
             &node_outputs,
             &incoming,
-            &tool_defs,
+            &tool_registry,
             None,
             Some(ctx.inputs.clone()),
         ) {
@@ -233,7 +235,7 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
                                 for nid in newly_ready {
                                     if let Some(task) = spawn_node(
                                         &nid, &ctx, &node_outputs, &incoming,
-                                        &tool_defs, None, None,
+                                        &tool_registry, None, None,
                                     ) {
                                         running_set.insert(nid);
                                         running.push(task);
@@ -243,6 +245,15 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
                             }
                         }
                     };
+
+                // Process and strip runtime tool changes from node output.
+                #[cfg(feature = "dynamic-tools")]
+                let evaluate_downstream = evaluate_downstream.map(|(id, mut outputs, fan_in)| {
+                    process_tool_changes(&mut outputs, &tool_registry);
+                    // Update stored output to exclude tool change keys.
+                    node_outputs.insert(id.clone(), outputs.clone());
+                    (id, outputs, fan_in)
+                });
 
                 if let Some((completed_node_id, outputs, from_fan_in)) = evaluate_downstream {
                     let newly_ready = evaluate_edges_and_find_ready(
@@ -267,7 +278,7 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
                         &ctx,
                         &node_outputs,
                         &incoming,
-                        &tool_defs,
+                        &tool_registry,
                         &mut running,
                         &mut running_set,
                         &mut completed,
@@ -311,6 +322,55 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
 
     let _ = ctx.session.finish(status.clone(), summary).await;
     (run_id, status)
+}
+
+// ---------------------------------------------------------------------------
+// Runtime tool changes (dynamic-tools feature)
+// ---------------------------------------------------------------------------
+
+/// Process `_tool_changes` from node output and apply to the registry.
+///
+/// Expected format:
+/// ```json
+/// { "_tool_changes": { "add": [ToolDef...], "remove": ["tool_name"] } }
+/// ```
+///
+/// The `_tool_changes` key is stripped from the output after processing.
+#[cfg(feature = "dynamic-tools")]
+fn process_tool_changes(outputs: &mut Value, registry: &ToolRegistry) {
+    let changes = match outputs
+        .as_object_mut()
+        .and_then(|o| o.remove("_tool_changes"))
+    {
+        Some(v) => v,
+        None => return,
+    };
+
+    // Process additions.
+    if let Some(adds) = changes.get("add").and_then(|v| v.as_array()) {
+        for tool_json in adds {
+            match serde_json::from_value::<ToolDef>(tool_json.clone()) {
+                Ok(tool_def) => {
+                    let perms = tool_def.permissions.clone();
+                    registry.register(tool_def, perms);
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "invalid tool in _tool_changes.add, skipping");
+                }
+            }
+        }
+    }
+
+    // Process removals.
+    if let Some(removes) = changes.get("remove").and_then(|v| v.as_array()) {
+        for name in removes {
+            if let Some(name_str) = name.as_str() {
+                if !registry.remove(name_str) {
+                    tracing::debug!(tool = name_str, "tool not found for removal");
+                }
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -367,5 +427,101 @@ fn compute_llm_summary(records: &[LlmInvocationRecord]) -> LlmRunSummary {
         total_cost_usd: if has_cost { Some(total_cost) } else { None },
         models_used,
         tools_invoked,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::{BTreeMap, BTreeSet};
+
+    fn make_tool(name: &str) -> ToolDef {
+        ToolDef {
+            name: name.into(),
+            description: format!("Tool {name}"),
+            parameters: serde_json::json!({"type": "object"}),
+            tool_type: ToolType::Node {
+                target_node_id: format!("{name}-node"),
+            },
+            metadata: BTreeMap::new(),
+            permissions: BTreeSet::new(),
+        }
+    }
+
+    #[cfg(feature = "dynamic-tools")]
+    #[test]
+    fn tool_changes_add_and_remove() {
+        let registry = ToolRegistry::from_tools(vec![make_tool("existing")]);
+        assert_eq!(registry.len(), 1);
+
+        let mut outputs = serde_json::json!({
+            "result": "ok",
+            "_tool_changes": {
+                "add": [
+                    {
+                        "name": "new_tool",
+                        "description": "A new tool",
+                        "parameters": {"type": "object"},
+                        "tool_type": {"kind": "node", "target_node_id": "n1"}
+                    }
+                ],
+                "remove": ["existing"]
+            }
+        });
+
+        process_tool_changes(&mut outputs, &registry);
+
+        // _tool_changes should be stripped from output.
+        assert!(outputs.get("_tool_changes").is_none());
+        assert_eq!(outputs.get("result").unwrap(), "ok");
+
+        // Registry should reflect changes.
+        assert_eq!(registry.len(), 1);
+        assert!(registry.get("new_tool").is_some());
+        assert!(registry.get("existing").is_none());
+    }
+
+    #[cfg(feature = "dynamic-tools")]
+    #[test]
+    fn tool_changes_no_op_when_absent() {
+        let registry = ToolRegistry::from_tools(vec![make_tool("search")]);
+        let mut outputs = serde_json::json!({"result": "ok"});
+
+        process_tool_changes(&mut outputs, &registry);
+
+        assert_eq!(registry.len(), 1);
+        assert_eq!(outputs, serde_json::json!({"result": "ok"}));
+    }
+
+    #[cfg(feature = "dynamic-tools")]
+    #[test]
+    fn tool_changes_invalid_tool_skipped() {
+        let registry = ToolRegistry::new();
+        let mut outputs = serde_json::json!({
+            "_tool_changes": {
+                "add": [{"invalid": true}]
+            }
+        });
+
+        process_tool_changes(&mut outputs, &registry);
+        assert!(registry.is_empty());
+    }
+
+    #[cfg(feature = "dynamic-tools")]
+    #[test]
+    fn tool_changes_remove_nonexistent_no_panic() {
+        let registry = ToolRegistry::new();
+        let mut outputs = serde_json::json!({
+            "_tool_changes": {
+                "remove": ["ghost"]
+            }
+        });
+
+        process_tool_changes(&mut outputs, &registry);
+        assert!(registry.is_empty());
     }
 }

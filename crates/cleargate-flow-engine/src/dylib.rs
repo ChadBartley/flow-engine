@@ -486,6 +486,7 @@ impl NodeHandler for DylibNodeHandler {
             ctx.llm_providers_arc(),
             #[cfg(feature = "mcp")]
             ctx.mcp_registry_arc(),
+            ctx.tool_registry().clone(),
         );
 
         // 3. Execute on a blocking thread.

@@ -231,6 +231,8 @@ impl std::error::Error for NodeError {}
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::*;
     use serde_json::json;
 
@@ -318,6 +320,7 @@ mod tests {
                     target_node_id: "n1".into(),
                 },
                 metadata: BTreeMap::new(),
+                permissions: BTreeSet::new(),
             },
         );
         tools_a.insert(
@@ -332,6 +335,7 @@ mod tests {
                     headers: BTreeMap::new(),
                 },
                 metadata: BTreeMap::new(),
+                permissions: BTreeSet::new(),
             },
         );
 
@@ -348,6 +352,7 @@ mod tests {
                     headers: BTreeMap::new(),
                 },
                 metadata: BTreeMap::new(),
+                permissions: BTreeSet::new(),
             },
         );
         tools_b.insert(
@@ -360,6 +365,7 @@ mod tests {
                     target_node_id: "n1".into(),
                 },
                 metadata: BTreeMap::new(),
+                permissions: BTreeSet::new(),
             },
         );
 
@@ -577,12 +583,14 @@ mod tests {
                     node_type: "llm_call".into(),
                     config: json!({"model": "gpt-4o"}),
                     position: Some((100.0, 200.0)),
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "router-1".into(),
                     node_type: "tool_router".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![Edge {
@@ -609,6 +617,7 @@ mod tests {
                             target_node_id: "search-node".into(),
                         },
                         metadata: BTreeMap::new(),
+                        permissions: BTreeSet::new(),
                     },
                 );
                 t

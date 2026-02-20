@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::{mpsc, oneshot};
 
+use super::tool_registry::ToolRegistry;
 use super::traits::{FlowLlmProvider, QueueProvider, SecretsProvider, StateStore};
 use super::types::{
     LlmChunk, LlmInvocationRecord, LlmRequest, LlmResponse, NodeError, Sensitivity, ToolDef,
@@ -80,6 +81,7 @@ pub struct NodeCtx {
     llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
     #[cfg(feature = "mcp")]
     mcp_registry: Arc<McpServerRegistry>,
+    tool_registry: ToolRegistry,
 }
 
 impl NodeCtx {
@@ -101,6 +103,7 @@ impl NodeCtx {
         human_input_registry: Option<HumanInputRegistry>,
         llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
         #[cfg(feature = "mcp")] mcp_registry: Arc<McpServerRegistry>,
+        tool_registry: ToolRegistry,
     ) -> Self {
         Self {
             run_id,
@@ -116,6 +119,7 @@ impl NodeCtx {
             llm_providers,
             #[cfg(feature = "mcp")]
             mcp_registry,
+            tool_registry,
         }
     }
 
@@ -305,6 +309,14 @@ impl NodeCtx {
         Arc::clone(&self.mcp_registry)
     }
 
+    /// Access the dynamic tool registry.
+    ///
+    /// Use this to register or remove tools at runtime. Changes are
+    /// immediately visible to all nodes spawned after the modification.
+    pub fn tool_registry(&self) -> &ToolRegistry {
+        &self.tool_registry
+    }
+
     /// Register a oneshot sender for human-in-loop input.
     ///
     /// The executor's `provide_input()` method delivers a value through the
@@ -351,6 +363,7 @@ pub mod test_support {
     use tokio::sync::mpsc;
 
     use crate::errors::{QueueError, SecretsError, StateError};
+    use crate::tool_registry::ToolRegistry;
     use crate::traits::{FlowLlmProvider, QueueProvider, SecretsProvider, StateStore};
     use crate::types::{LlmInvocationRecord, Sensitivity, ToolDef};
 
@@ -555,6 +568,8 @@ pub mod test_support {
                 messages: Arc::clone(&queue_messages),
             });
 
+            let tool_registry = ToolRegistry::from_tools(self.tools.iter().cloned());
+
             let ctx = NodeCtx::new(
                 self.run_id,
                 self.node_id,
@@ -572,6 +587,7 @@ pub mod test_support {
                 #[cfg(feature = "mcp")]
                 self.mcp_registry
                     .unwrap_or_else(|| Arc::new(crate::mcp::McpServerRegistry::new())),
+                tool_registry,
             );
 
             let inspector = TestNodeCtxInspector {
@@ -655,7 +671,7 @@ pub use test_support::{TestNodeCtx, TestNodeCtxInspector};
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use serde_json::json;
 
@@ -702,6 +718,7 @@ mod tests {
                 target_node_id: "search-node".into(),
             },
             metadata: BTreeMap::new(),
+            permissions: BTreeSet::new(),
         }
     }
 

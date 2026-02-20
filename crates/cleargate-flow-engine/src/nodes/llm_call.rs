@@ -519,6 +519,8 @@ fn validate_structured_output(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::*;
     use crate::node_ctx::TestNodeCtx;
     use crate::traits::FlowLlmProvider;
@@ -742,6 +744,7 @@ mod tests {
                     target_node_id: "n1".into(),
                 },
                 metadata: BTreeMap::new(),
+                permissions: BTreeSet::new(),
             })
             .tool(ToolDef {
                 name: "calc".into(),
@@ -751,6 +754,7 @@ mod tests {
                     target_node_id: "n2".into(),
                 },
                 metadata: BTreeMap::new(),
+                permissions: BTreeSet::new(),
             })
             .build();
 

@@ -22,6 +22,7 @@ pub mod node_ctx;
 pub mod nodes;
 pub mod observer;
 pub mod runtime;
+pub mod tool_registry;
 pub mod traits;
 pub mod triggers;
 pub mod types;
@@ -83,11 +84,14 @@ pub use triggers::{
     TriggerDispatcher, TriggerInstance, TriggerRunner,
 };
 
+// tool_registry
+pub use tool_registry::{ToolPermissionLabel, ToolRegistry};
+
 // types
 pub use types::{
     Edge, EdgeCondition, ExecutionHints, ExecutionId, FlowBundle, FlowHead, FlowTag, FlowVersion,
     GraphDef, LlmChunk, LlmCost, LlmInvocationRecord, LlmRequest, LlmResponse, LlmRunSummary,
-    LlmToolCall, NodeError, NodeInstance, NodeMeta, NodeUiHints, PortDef, PortType,
+    LlmToolCall, NodeError, NodeInstance, NodeMeta, NodeToolAccess, NodeUiHints, PortDef, PortType,
     ReplaySubstitutions, RetryPolicy, RunRecord, RunStatus, Sensitivity, ToolDef, ToolType,
     TriggerEvent, TriggerSource, TypeDef, TypeField, GRAPH_SCHEMA_VERSION,
     WRITE_EVENT_SCHEMA_VERSION,

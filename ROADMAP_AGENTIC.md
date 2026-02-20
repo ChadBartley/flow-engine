@@ -83,32 +83,30 @@ Dedicated `McpCallNode` instead of modifying `ToolRouterNode`. ToolRouterNode st
 
 ---
 
-## O3: Dynamic Tool Registration
+## O3: Dynamic Tool Registration (Complete)
 
 **Impact**: Medium-High — enables context-dependent tooling and runtime flexibility.
 **Scope**: Small-Medium (~1-2 weeks)
 
-### What Gets Built
+### What Was Built
 
-- **`ToolRegistry`** — manages tool lifecycle, replaces static tool list in executor; single source of truth for available tools at execution time
-- **Runtime tool add/remove** — executor API to register and unregister tools (including MCP servers) during a flow run
-- **Runtime MCP server discovery** — add MCP servers by URL or config mid-run; O1's client handles the connection, O3 manages the lifecycle
-- **Context-dependent tool availability** — per-node or per-agent tool filtering via config
-- **Node-scoped tool sets** — nodes declare which tools they can access; executor enforces boundaries
-- **Tool permission labels** — tools declare capability labels (e.g., `read`, `write`, `admin`, `pii-access`, or custom); agents/nodes declare a permission set; `ToolRegistry` enforces the intersection so agents only see tools whose labels match their permissions
+- **`ToolRegistry`** — thread-safe registry (`parking_lot::RwLock` + `Arc`) managing tool lifecycle; replaces static `Arc<Vec<ToolDef>>` as single source of truth
+- **Runtime tool add/remove** — nodes output `_tool_changes: { add: [ToolDef...], remove: ["name"] }` to register/unregister tools between executions
+- **`NodeToolAccess`** — per-node tool filtering via `allowed_tools` allowlist and `granted_permissions` set on `NodeInstance`
+- **`ToolDef.permissions`** — permission labels on tools; `ToolRegistry.snapshot_filtered()` enforces intersection with caller permissions
+- **Feature gate** — `dynamic-tools` feature (in default features, no extra deps); controls whether filtering is applied in `spawn_node`
 
 ### Key Decisions
 
 - `ToolRegistry` is the single source of truth for available tools at execution time
-- Tools can be added/removed between node executions, not mid-node
-- MCP tools (O1) integrate through the same registry — O1 provides the protocol client, O3 manages when and where those tools are available
-- Tool availability is declarative (node config) — no imperative tool manipulation inside node handlers
-- **Permission enforcement is mandatory** — every tool has labels, every agent/node has a permission set; the registry filters on the intersection. Agents cannot escalate their own permissions at runtime
+- Tools can be added/removed between node executions via `_tool_changes` output key (declarative)
+- `NodeToolAccess` and `ToolDef.permissions` are always compiled (not struct-level `#[cfg]`) to avoid touching 40+ construction sites; the `dynamic-tools` feature controls filtering logic only
+- MCP tools (O1) integrate through the same registry; runtime MCP server discovery via `_mcp_servers` output key deferred (infrastructure ready)
 
 ### Files
 
-- **Create:** `flow/tool_registry.rs`
-- **Modify:** `flow/executor.rs`, `flow/engine.rs`, `flow/types.rs`, `flow/nodes/tool_router.rs`
+- **Created:** `crates/cleargate-flow-engine/src/tool_registry.rs`
+- **Modified:** `Cargo.toml`, `lib.rs`, `types/graph.rs`, `executor/run.rs`, `executor/node.rs`, `executor/fanout.rs`, `node_ctx.rs`, `dylib.rs`
 
 ---
 

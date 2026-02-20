@@ -1,6 +1,6 @@
 //! Tool discovery — converts MCP tool listings to FlowEngine `ToolDef` values.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::client::McpClient;
 use super::types::McpTool;
@@ -33,6 +33,7 @@ fn mcp_tool_to_tool_def(server_name: &str, tool: McpTool) -> ToolDef {
             tool_name: tool.name,
         },
         metadata: BTreeMap::new(),
+        permissions: BTreeSet::new(),
     }
 }
 

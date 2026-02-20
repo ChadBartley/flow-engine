@@ -4,12 +4,13 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["dylib", "jq", "cron", "http-node", "mcp", "structured-output"]
+default = ["dylib", "jq", "cron", "http-node", "mcp", "structured-output", "dynamic-tools"]
 dylib = []
 jq = []
 cron = []
 http-node = []
 mcp = []
+dynamic-tools = []
 schemars = ["dep:schemars"]
 structured-output = ["dep:jsonschema"]
 test-support = []

@@ -161,6 +161,7 @@ mod tests {
             node_type: "test".to_string(),
             config: serde_json::json!({}),
             position: None,
+            tool_access: None,
         }
     }
 

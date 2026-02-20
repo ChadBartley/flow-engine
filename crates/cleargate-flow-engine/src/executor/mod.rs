@@ -585,6 +585,7 @@ mod tests {
                 node_type: node_type.to_string(),
                 config: json!({}),
                 position: None,
+                tool_access: None,
             })
             .collect();
 
@@ -732,18 +733,21 @@ mod tests {
                     node_type: "branching".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "B".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "C".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -830,24 +834,28 @@ mod tests {
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "B".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "C".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "D".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -1155,18 +1163,21 @@ mod tests {
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "B".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "C".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -1345,18 +1356,21 @@ mod tests {
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "B".into(),
                     node_type: "failing".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "C".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -1762,18 +1776,21 @@ mod tests {
                     node_type: "array_output".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "B".into(),
                     node_type: "indexed".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "C".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -1922,18 +1939,21 @@ mod tests {
                     node_type: "counting".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "B".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "C".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -2020,6 +2040,7 @@ mod tests {
                 node_type: "passthrough".into(),
                 config: json!({}),
                 position: None,
+                tool_access: None,
             }],
             edges: vec![Edge {
                 id: "e1".into(),
@@ -2266,24 +2287,28 @@ mod tests {
                     node_type: "stateful_llm".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "router".into(),
                     node_type: "tool_router".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "tool".into(),
                     node_type: "tool_executor".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "check".into(),
                     node_type: "conditional".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -2440,24 +2465,28 @@ mod tests {
                     node_type: "stateful_llm".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "router".into(),
                     node_type: "tool_router".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "tool".into(),
                     node_type: "tool_executor".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "check".into(),
                     node_type: "conditional".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -2604,18 +2633,21 @@ mod tests {
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "human".into(),
                     node_type: "human_in_loop".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "end".into(),
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![
@@ -2771,12 +2803,14 @@ mod tests {
                     node_type: "passthrough".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
                 NodeInstance {
                     instance_id: "human".into(),
                     node_type: "short_timeout_human".into(),
                     config: json!({}),
                     position: None,
+                    tool_access: None,
                 },
             ],
             edges: vec![Edge {
@@ -3079,5 +3113,236 @@ mod tests {
         if let WriteEvent::RunCompleted { status, .. } = run_completed[0] {
             assert_eq!(*status, RunStatus::Failed);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Dynamic tools integration tests
+    // -----------------------------------------------------------------------
+
+    /// Reports the names of available tools as its output.
+    struct ToolReporterNode;
+
+    #[async_trait]
+    impl NodeHandler for ToolReporterNode {
+        fn meta(&self) -> NodeMeta {
+            NodeMeta {
+                node_type: "tool_reporter".into(),
+                label: "Tool Reporter".into(),
+                category: "test".into(),
+                inputs: vec![],
+                outputs: vec![],
+                config_schema: json!({}),
+                ui: NodeUiHints::default(),
+                execution: ExecutionHints::default(),
+            }
+        }
+
+        async fn run(
+            &self,
+            _inputs: Value,
+            _config: &Value,
+            ctx: &NodeCtx,
+        ) -> Result<Value, NodeError> {
+            let tool_names: Vec<String> = ctx
+                .available_tools()
+                .iter()
+                .map(|t| t.name.clone())
+                .collect();
+            Ok(json!({"tools": tool_names}))
+        }
+    }
+
+    #[cfg(feature = "dynamic-tools")]
+    #[tokio::test]
+    async fn node_tool_access_filtering() {
+        use std::collections::BTreeSet;
+
+        let mut registry = HashMap::new();
+        registry.insert(
+            "tool_reporter".to_string(),
+            Arc::new(ToolReporterNode) as Arc<dyn NodeHandler>,
+        );
+
+        let (executor, _run_store) = make_executor(registry);
+
+        let graph = GraphDef {
+            schema_version: GRAPH_SCHEMA_VERSION,
+            id: "tool-filter-flow".into(),
+            name: "Tool Filter Test".into(),
+            version: "1".into(),
+            nodes: vec![NodeInstance {
+                instance_id: "reporter-1".into(),
+                node_type: "tool_reporter".into(),
+                config: json!({}),
+                position: None,
+                tool_access: Some(NodeToolAccess {
+                    allowed_tools: Some(BTreeSet::from(["search".to_string()])),
+                    granted_permissions: BTreeSet::new(),
+                }),
+            }],
+            edges: vec![],
+            metadata: BTreeMap::new(),
+            tool_definitions: {
+                let mut t = BTreeMap::new();
+                t.insert(
+                    "search".to_string(),
+                    ToolDef {
+                        name: "search".into(),
+                        description: "Search".into(),
+                        parameters: json!({"type": "object"}),
+                        tool_type: ToolType::Node {
+                            target_node_id: "n1".into(),
+                        },
+                        metadata: BTreeMap::new(),
+                        permissions: BTreeSet::new(),
+                    },
+                );
+                t.insert(
+                    "email".to_string(),
+                    ToolDef {
+                        name: "email".into(),
+                        description: "Send email".into(),
+                        parameters: json!({"type": "object"}),
+                        tool_type: ToolType::Node {
+                            target_node_id: "n2".into(),
+                        },
+                        metadata: BTreeMap::new(),
+                        permissions: BTreeSet::new(),
+                    },
+                );
+                t
+            },
+        };
+
+        let mut handle = executor
+            .execute(
+                &graph,
+                "v1",
+                json!({}),
+                TriggerSource::Manual {
+                    principal: "test".into(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let events = drain_events(&mut handle.events).await;
+
+        let run_completed = events_of_type(&events, is_run_completed);
+        assert_eq!(run_completed.len(), 1);
+
+        // Node should only see "search" (not "email").
+        let completed: Vec<_> = events
+            .iter()
+            .filter_map(|e| {
+                if let WriteEvent::NodeCompleted { outputs, .. } = e {
+                    Some(outputs.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(completed.len(), 1);
+        let tools = completed[0]["tools"].as_array().unwrap();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0], "search");
+    }
+
+    #[cfg(feature = "dynamic-tools")]
+    #[tokio::test]
+    async fn permission_enforcement_blocks_restricted() {
+        use std::collections::BTreeSet;
+
+        let mut registry = HashMap::new();
+        registry.insert(
+            "tool_reporter".to_string(),
+            Arc::new(ToolReporterNode) as Arc<dyn NodeHandler>,
+        );
+
+        let (executor, _run_store) = make_executor(registry);
+
+        let graph = GraphDef {
+            schema_version: GRAPH_SCHEMA_VERSION,
+            id: "perm-test".into(),
+            name: "Permission Test".into(),
+            version: "1".into(),
+            nodes: vec![NodeInstance {
+                instance_id: "reporter-1".into(),
+                node_type: "tool_reporter".into(),
+                config: json!({}),
+                position: None,
+                tool_access: Some(NodeToolAccess {
+                    allowed_tools: None,
+                    granted_permissions: BTreeSet::new(),
+                }),
+            }],
+            edges: vec![],
+            metadata: BTreeMap::new(),
+            tool_definitions: {
+                let mut t = BTreeMap::new();
+                t.insert(
+                    "public_tool".to_string(),
+                    ToolDef {
+                        name: "public_tool".into(),
+                        description: "Public".into(),
+                        parameters: json!({"type": "object"}),
+                        tool_type: ToolType::Node {
+                            target_node_id: "n1".into(),
+                        },
+                        metadata: BTreeMap::new(),
+                        permissions: BTreeSet::new(),
+                    },
+                );
+                t.insert(
+                    "admin_tool".to_string(),
+                    ToolDef {
+                        name: "admin_tool".into(),
+                        description: "Admin only".into(),
+                        parameters: json!({"type": "object"}),
+                        tool_type: ToolType::Node {
+                            target_node_id: "n2".into(),
+                        },
+                        metadata: BTreeMap::new(),
+                        permissions: BTreeSet::from(["admin".to_string()]),
+                    },
+                );
+                t
+            },
+        };
+
+        let mut handle = executor
+            .execute(
+                &graph,
+                "v1",
+                json!({}),
+                TriggerSource::Manual {
+                    principal: "test".into(),
+                },
+                None,
+            )
+            .await
+            .unwrap();
+
+        let events = drain_events(&mut handle.events).await;
+
+        let run_completed = events_of_type(&events, is_run_completed);
+        assert_eq!(run_completed.len(), 1);
+
+        // Node with no permissions should only see public_tool.
+        let completed: Vec<_> = events
+            .iter()
+            .filter_map(|e| {
+                if let WriteEvent::NodeCompleted { outputs, .. } = e {
+                    Some(outputs.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        assert_eq!(completed.len(), 1);
+        let tools = completed[0]["tools"].as_array().unwrap();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0], "public_tool");
     }
 }
