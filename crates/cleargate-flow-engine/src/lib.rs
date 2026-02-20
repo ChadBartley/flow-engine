@@ -26,6 +26,8 @@ pub mod node_ctx;
 pub mod nodes;
 pub mod observer;
 pub mod runtime;
+#[cfg(feature = "subflow")]
+pub mod subflow_registry;
 pub mod tool_registry;
 pub mod traits;
 pub mod triggers;
@@ -78,12 +80,18 @@ pub use multi_agent::{AgentHandoff, AgentRole, Blackboard};
 pub use nodes::ContextManagementNode;
 #[cfg(feature = "mcp")]
 pub use nodes::McpCallNode;
+#[cfg(feature = "subflow")]
+pub use nodes::SubflowNode;
 pub use nodes::{
     ConditionalNode, CsvToolNode, HttpNode, HumanInLoopNode, JqNode, JsonLookupNode, LlmCallNode,
     ToolRouterNode,
 };
 #[cfg(feature = "multi-agent")]
 pub use nodes::{SupervisorNode, WorkerNode};
+
+// subflow_registry
+#[cfg(feature = "subflow")]
+pub use subflow_registry::SubflowRegistry;
 
 // observer
 pub use observer::ObserverSession;

@@ -195,22 +195,26 @@ Pattern library on top of existing executor — no new runtime or execution prim
 
 ---
 
-## O6: Graph Composition
+## O6: Graph Composition ✅
 
 **Impact**: Medium — enables reusable flow components.
-**Scope**: Medium (~2 weeks)
+**Status**: Complete
 
-### What Gets Built
+### What Was Built
 
-- **Sub-flow node** — embed one `GraphDef` as a single node in another graph
-- Sub-flow gets its own `NodeCtx` scope but shares the parent run's `StateStore`
-- Input/output mapping between parent graph edges and sub-flow entry/exit nodes
-- `EngineBuilder::register_subflow(name, graph_def)` API
+- **`SubflowNode`** — built-in node that executes a sub-`GraphDef` as a child run
+- **`SubflowRegistry`** — thread-safe registry for named sub-flow definitions
+- **Two resolution modes**: named (`"subflow": "name"`) and inline (`"subflow_inline": {...}`)
+- **Input/output mapping** — optional field renaming between parent and child
+- **`EngineBuilder::register_subflow(name, graph_def)`** — registration API
+- **Recursive composition** — sub-flows can contain other sub-flows (nested execution)
+- **Failure propagation** — child run failures map to parent `NodeError::Fatal`
+- Feature-gated behind `subflow` (default-enabled)
 
 ### Files
 
-- **Create:** `flow/nodes/subflow_node.rs`
-- **Modify:** `flow/executor.rs`, `flow/engine.rs`, `flow/types.rs`
+- **Created:** `src/subflow_registry.rs`, `src/nodes/subflow.rs`
+- **Modified:** `Cargo.toml`, `src/lib.rs`, `src/nodes/mod.rs`, `src/executor/mod.rs`, `src/executor/run.rs`, `src/executor/node.rs`, `src/node_ctx.rs`, `src/engine/builder.rs`, `src/engine/mod.rs`, `src/dylib.rs`
 
 ---
 

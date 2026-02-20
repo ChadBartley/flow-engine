@@ -88,6 +88,10 @@ pub struct NodeCtx {
     #[cfg(feature = "memory")]
     token_counter: Arc<dyn TokenCounter>,
     tool_registry: ToolRegistry,
+    #[cfg(feature = "subflow")]
+    subflow_registry: Arc<crate::subflow_registry::SubflowRegistry>,
+    #[cfg(feature = "subflow")]
+    executor: Option<Arc<crate::executor::Executor>>,
 }
 
 impl NodeCtx {
@@ -95,7 +99,7 @@ impl NodeCtx {
     ///
     /// Typically only called by the executor or replay engine — node authors
     /// receive `&NodeCtx` and don't construct instances directly.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, private_interfaces)]
     pub fn new(
         run_id: String,
         node_instance_id: String,
@@ -112,6 +116,8 @@ impl NodeCtx {
         #[cfg(feature = "memory")] memory_manager: Arc<dyn MemoryManager>,
         #[cfg(feature = "memory")] token_counter: Arc<dyn TokenCounter>,
         tool_registry: ToolRegistry,
+        #[cfg(feature = "subflow")] subflow_registry: Arc<crate::subflow_registry::SubflowRegistry>,
+        #[cfg(feature = "subflow")] executor: Option<Arc<crate::executor::Executor>>,
     ) -> Self {
         Self {
             run_id,
@@ -132,6 +138,10 @@ impl NodeCtx {
             #[cfg(feature = "memory")]
             token_counter,
             tool_registry,
+            #[cfg(feature = "subflow")]
+            subflow_registry,
+            #[cfg(feature = "subflow")]
+            executor,
         }
     }
 
@@ -361,6 +371,34 @@ impl NodeCtx {
     #[cfg(feature = "multi-agent")]
     pub fn blackboard(&self) -> crate::multi_agent::Blackboard {
         crate::multi_agent::Blackboard::new(Arc::clone(&self.state), self.run_id.clone())
+    }
+
+    /// Access the sub-flow registry for resolving named sub-flows.
+    #[cfg(feature = "subflow")]
+    pub(crate) fn subflow_registry(&self) -> &Arc<crate::subflow_registry::SubflowRegistry> {
+        &self.subflow_registry
+    }
+
+    /// Access the sub-flow registry as an `Arc` (for cloning into dylib contexts).
+    #[cfg(feature = "subflow")]
+    pub(crate) fn subflow_registry_arc(&self) -> Arc<crate::subflow_registry::SubflowRegistry> {
+        Arc::clone(&self.subflow_registry)
+    }
+
+    /// Access the executor for running sub-flow graphs.
+    ///
+    /// Returns `None` if the executor self-reference was not set (e.g. in
+    /// standalone test contexts). Sub-flow nodes should treat this as a fatal
+    /// error at execution time.
+    #[cfg(feature = "subflow")]
+    pub(crate) fn executor(&self) -> Option<&Arc<crate::executor::Executor>> {
+        self.executor.as_ref()
+    }
+
+    /// Access the executor as a cloned `Option<Arc>` (for dylib contexts).
+    #[cfg(feature = "subflow")]
+    pub(crate) fn executor_arc(&self) -> Option<Arc<crate::executor::Executor>> {
+        self.executor.clone()
     }
 
     /// Register a oneshot sender for human-in-loop input.
@@ -638,6 +676,10 @@ pub mod test_support {
                 #[cfg(feature = "memory")]
                 Arc::new(crate::memory::CharEstimateCounter),
                 tool_registry,
+                #[cfg(feature = "subflow")]
+                Arc::new(crate::subflow_registry::SubflowRegistry::new()),
+                #[cfg(feature = "subflow")]
+                None, // No executor in unit test context; integration tests use full Engine
             );
 
             let inspector = TestNodeCtxInspector {

@@ -96,6 +96,10 @@ pub(super) fn spawn_node(
     let memory_manager = Arc::clone(&ctx.memory_manager);
     #[cfg(feature = "memory")]
     let token_counter = Arc::clone(&ctx.token_counter);
+    #[cfg(feature = "subflow")]
+    let subflow_registry = Arc::clone(&ctx.subflow_registry);
+    #[cfg(feature = "subflow")]
+    let executor = ctx.executor.clone();
 
     let timeout_ms = meta.execution.timeout_ms;
     let retry = meta.execution.retry.clone();
@@ -128,6 +132,10 @@ pub(super) fn spawn_node(
             memory_manager,
             #[cfg(feature = "memory")]
             token_counter,
+            #[cfg(feature = "subflow")]
+            subflow_registry,
+            #[cfg(feature = "subflow")]
+            executor,
         )
         .await
     }))
@@ -159,6 +167,8 @@ async fn execute_node(
     #[cfg(feature = "mcp")] mcp_registry: Arc<crate::mcp::McpServerRegistry>,
     #[cfg(feature = "memory")] memory_manager: Arc<dyn crate::memory::MemoryManager>,
     #[cfg(feature = "memory")] token_counter: Arc<dyn crate::memory::TokenCounter>,
+    #[cfg(feature = "subflow")] subflow_registry: Arc<crate::subflow_registry::SubflowRegistry>,
+    #[cfg(feature = "subflow")] executor: Option<Arc<super::Executor>>,
 ) -> NodeResult {
     let max_attempts = retry.max_attempts.max(1);
     let mut last_error = String::new();
@@ -205,6 +215,10 @@ async fn execute_node(
             #[cfg(feature = "memory")]
             Arc::clone(&token_counter),
             tool_registry.clone(),
+            #[cfg(feature = "subflow")]
+            Arc::clone(&subflow_registry),
+            #[cfg(feature = "subflow")]
+            executor.clone(),
         );
 
         let node_start = std::time::Instant::now();

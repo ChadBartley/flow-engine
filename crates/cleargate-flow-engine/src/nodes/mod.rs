@@ -11,6 +11,8 @@ pub mod json_lookup;
 pub mod llm_call;
 #[cfg(feature = "mcp")]
 pub mod mcp_call;
+#[cfg(feature = "subflow")]
+pub mod subflow;
 #[cfg(feature = "multi-agent")]
 pub mod supervisor;
 pub mod tool_router;
@@ -28,6 +30,8 @@ pub use json_lookup::JsonLookupNode;
 pub use llm_call::LlmCallNode;
 #[cfg(feature = "mcp")]
 pub use mcp_call::McpCallNode;
+#[cfg(feature = "subflow")]
+pub use subflow::SubflowNode;
 #[cfg(feature = "multi-agent")]
 pub use supervisor::SupervisorNode;
 pub use tool_router::ToolRouterNode;

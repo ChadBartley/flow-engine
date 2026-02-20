@@ -772,4 +772,568 @@ mod tests {
         // Immediately shutdown — should not panic or hang.
         engine.shutdown().await;
     }
+
+    // -----------------------------------------------------------------------
+    // Subflow tests
+    // -----------------------------------------------------------------------
+
+    #[cfg(feature = "subflow")]
+    mod subflow_tests {
+        use super::*;
+        use crate::write_event::WriteEvent;
+
+        /// Helper: build an engine with an echo node and optional sub-flows.
+        async fn build_subflow_engine(
+            subflows: Vec<(&str, GraphDef)>,
+        ) -> (Engine, tempfile::TempDir) {
+            let dir = tempfile::tempdir().expect("tempdir");
+            let flow_store = FileFlowStore::new(dir.path().join("flows")).expect("flow store");
+            let run_store = FileRunStore::new(dir.path().join("runs")).expect("run store");
+
+            let mut builder = Engine::builder()
+                .flow_store(flow_store)
+                .run_store(run_store)
+                .node(EchoNode);
+
+            for (name, graph) in subflows {
+                builder = builder.register_subflow(name, graph);
+            }
+
+            let engine = builder.build().await.expect("engine build");
+            (engine, dir)
+        }
+
+        fn echo_graph(id: &str) -> GraphDef {
+            GraphDef {
+                schema_version: 1,
+                id: id.into(),
+                name: id.into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "echo-1".into(),
+                    node_type: "echo".into(),
+                    config: json!({}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            }
+        }
+
+        /// Drain events with a reasonable timeout.
+        async fn drain_events(
+            mut rx: tokio::sync::broadcast::Receiver<WriteEvent>,
+        ) -> Vec<WriteEvent> {
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            let mut events = Vec::new();
+            while let Ok(ev) = rx.try_recv() {
+                events.push(ev);
+            }
+            events
+        }
+
+        // -- Test: run sub-flow by name ------------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_by_name() {
+            let child_graph = echo_graph("child-flow");
+            let (engine, _dir) = build_subflow_engine(vec![("my-child", child_graph)]).await;
+
+            // Parent graph: single SubflowNode referencing "my-child".
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-flow".into(),
+                name: "Parent Flow".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({"subflow": "my-child"}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({"hello": "world"}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute parent");
+
+            let events = drain_events(handle.events).await;
+
+            // Should have RunStarted, NodeStarted, NodeCompleted, RunCompleted
+            // for the parent. The child also runs.
+            let run_completed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::RunCompleted { .. }))
+                .collect();
+            assert!(!run_completed.is_empty(), "parent run should complete");
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: run sub-flow inline -------------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_inline() {
+            let (engine, _dir) = build_subflow_engine(vec![]).await;
+
+            let inline_child = echo_graph("inline-child");
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-inline".into(),
+                name: "Parent Inline".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({
+                        "subflow_inline": inline_child
+                    }),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({"data": 42}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute inline subflow");
+
+            let events = drain_events(handle.events).await;
+            let completed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::RunCompleted { .. }))
+                .collect();
+            assert!(!completed.is_empty(), "parent run should complete");
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: sub-flow not found --------------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_not_found() {
+            let (engine, _dir) = build_subflow_engine(vec![]).await;
+
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-missing".into(),
+                name: "Parent Missing".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({"subflow": "nonexistent"}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute should start");
+
+            let events = drain_events(handle.events).await;
+
+            // The subflow node should fail, causing a NodeFailed event.
+            let node_failed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::NodeFailed { .. }))
+                .collect();
+            assert!(
+                !node_failed.is_empty(),
+                "subflow node should fail when sub-flow not found"
+            );
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: empty graph validation ----------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_empty_graph() {
+            let (engine, _dir) = build_subflow_engine(vec![]).await;
+
+            let empty_graph = GraphDef {
+                schema_version: 1,
+                id: "empty".into(),
+                name: "Empty".into(),
+                version: "1.0".into(),
+                nodes: vec![],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-empty".into(),
+                name: "Parent Empty".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({"subflow_inline": empty_graph}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute should start");
+
+            let events = drain_events(handle.events).await;
+            let node_failed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::NodeFailed { .. }))
+                .collect();
+            assert!(
+                !node_failed.is_empty(),
+                "subflow node should fail with empty graph"
+            );
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: input/output mapping ------------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_input_output_mapping() {
+            let child_graph = echo_graph("mapping-child");
+            let (engine, _dir) = build_subflow_engine(vec![("mapped", child_graph)]).await;
+
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-mapped".into(),
+                name: "Parent Mapped".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({
+                        "subflow": "mapped",
+                        "input_mapping": {"original_key": "mapped_key"},
+                        "output_mapping": {"mapped_key": "final_key"}
+                    }),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({"original_key": "value123"}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute mapped subflow");
+
+            let events = drain_events(handle.events).await;
+            let completed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::RunCompleted { .. }))
+                .collect();
+            assert!(!completed.is_empty(), "parent should complete");
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: nested sub-flows (subflow containing subflow) -----------
+
+        #[tokio::test]
+        async fn run_subflow_nested() {
+            // Inner: echo graph
+            let inner_graph = echo_graph("inner");
+
+            // Outer: subflow node referencing "inner"
+            let outer_graph = GraphDef {
+                schema_version: 1,
+                id: "outer".into(),
+                name: "Outer".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-inner".into(),
+                    node_type: "subflow".into(),
+                    config: json!({"subflow": "inner"}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let (engine, _dir) =
+                build_subflow_engine(vec![("inner", inner_graph), ("outer", outer_graph)]).await;
+
+            // Parent references "outer" which references "inner"
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-nested".into(),
+                name: "Parent Nested".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-outer".into(),
+                    node_type: "subflow".into(),
+                    config: json!({"subflow": "outer"}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({"nested": true}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute nested subflow");
+
+            let events = drain_events(handle.events).await;
+            let completed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::RunCompleted { .. }))
+                .collect();
+            assert!(!completed.is_empty(), "nested subflow should complete");
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: failure propagation -------------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_failure_propagation() {
+            /// A node that always fails.
+            struct FailNode;
+
+            #[async_trait]
+            impl NodeHandler for FailNode {
+                fn meta(&self) -> NodeMeta {
+                    NodeMeta {
+                        node_type: "always_fail".into(),
+                        label: "Always Fail".into(),
+                        category: "test".into(),
+                        inputs: vec![],
+                        outputs: vec![],
+                        config_schema: json!({}),
+                        ui: NodeUiHints::default(),
+                        execution: ExecutionHints::default(),
+                    }
+                }
+
+                async fn run(
+                    &self,
+                    _inputs: Value,
+                    _config: &Value,
+                    _ctx: &crate::node_ctx::NodeCtx,
+                ) -> Result<Value, NodeError> {
+                    Err(NodeError::Fatal {
+                        message: "intentional failure".into(),
+                    })
+                }
+            }
+
+            let dir = tempfile::tempdir().expect("tempdir");
+            let flow_store = FileFlowStore::new(dir.path().join("flows")).expect("flow store");
+            let run_store = FileRunStore::new(dir.path().join("runs")).expect("run store");
+
+            let failing_child = GraphDef {
+                schema_version: 1,
+                id: "failing-child".into(),
+                name: "Failing Child".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "fail-1".into(),
+                    node_type: "always_fail".into(),
+                    config: json!({}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let engine = Engine::builder()
+                .flow_store(flow_store)
+                .run_store(run_store)
+                .node(FailNode)
+                .register_subflow("failing", failing_child)
+                .build()
+                .await
+                .expect("engine build");
+
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-fail".into(),
+                name: "Parent Fail".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({"subflow": "failing"}),
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute should start");
+
+            let events = drain_events(handle.events).await;
+
+            // The child failure should propagate as a NodeFailed in the parent.
+            let node_failed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::NodeFailed { .. }))
+                .collect();
+            assert!(
+                !node_failed.is_empty(),
+                "child failure should propagate to parent node failure"
+            );
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: missing config validation -------------------------------
+
+        #[tokio::test]
+        async fn run_subflow_missing_config() {
+            let (engine, _dir) = build_subflow_engine(vec![]).await;
+
+            let parent_graph = GraphDef {
+                schema_version: 1,
+                id: "parent-no-config".into(),
+                name: "Parent No Config".into(),
+                version: "1.0".into(),
+                nodes: vec![NodeInstance {
+                    instance_id: "sub-1".into(),
+                    node_type: "subflow".into(),
+                    config: json!({}), // Missing both "subflow" and "subflow_inline"
+                    position: None,
+                    tool_access: None,
+                }],
+                edges: vec![],
+                metadata: BTreeMap::new(),
+                tool_definitions: BTreeMap::new(),
+            };
+
+            let handle = engine
+                .execute_graph(
+                    &parent_graph,
+                    "v1",
+                    json!({}),
+                    TriggerSource::Api {
+                        request_id: "test".into(),
+                    },
+                    None,
+                )
+                .await
+                .expect("execute should start");
+
+            let events = drain_events(handle.events).await;
+            let node_failed: Vec<_> = events
+                .iter()
+                .filter(|e| matches!(e, WriteEvent::NodeFailed { .. }))
+                .collect();
+            assert!(
+                !node_failed.is_empty(),
+                "subflow node should fail with missing config"
+            );
+
+            engine.shutdown().await;
+        }
+
+        // -- Test: subflow in catalog --------------------------------------
+
+        #[tokio::test]
+        async fn subflow_in_node_catalog() {
+            let (engine, _dir) = build_subflow_engine(vec![]).await;
+
+            let catalog = engine.node_catalog();
+            let subflow = catalog.iter().find(|m| m.node_type == "subflow");
+            assert!(subflow.is_some(), "subflow node should be in catalog");
+
+            engine.shutdown().await;
+        }
+    }
 }

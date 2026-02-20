@@ -491,6 +491,10 @@ impl NodeHandler for DylibNodeHandler {
             #[cfg(feature = "memory")]
             ctx.token_counter_arc(),
             ctx.tool_registry().clone(),
+            #[cfg(feature = "subflow")]
+            ctx.subflow_registry_arc(),
+            #[cfg(feature = "subflow")]
+            ctx.executor_arc(), // Option<Arc<Executor>>
         );
 
         // 3. Execute on a blocking thread.

@@ -103,6 +103,11 @@ pub(crate) struct Executor {
     memory_manager: Arc<dyn crate::memory::MemoryManager>,
     #[cfg(feature = "memory")]
     token_counter: Arc<dyn crate::memory::TokenCounter>,
+    #[cfg(feature = "subflow")]
+    subflow_registry: Arc<crate::subflow_registry::SubflowRegistry>,
+    /// Weak self-reference for passing to sub-flow nodes.
+    #[cfg(feature = "subflow")]
+    self_ref: std::sync::OnceLock<std::sync::Weak<Self>>,
     /// Active run event senders for WebSocket subscription.
     /// Key: run_id, Value: broadcast sender for WriteEvent.
     run_event_senders: Arc<tokio::sync::RwLock<HashMap<String, broadcast::Sender<WriteEvent>>>>,
@@ -128,6 +133,7 @@ impl Executor {
         #[cfg(feature = "mcp")] mcp_registry: Arc<crate::mcp::McpServerRegistry>,
         #[cfg(feature = "memory")] memory_manager: Arc<dyn crate::memory::MemoryManager>,
         #[cfg(feature = "memory")] token_counter: Arc<dyn crate::memory::TokenCounter>,
+        #[cfg(feature = "subflow")] subflow_registry: Arc<crate::subflow_registry::SubflowRegistry>,
     ) -> Self {
         Self {
             config,
@@ -148,9 +154,22 @@ impl Executor {
             memory_manager,
             #[cfg(feature = "memory")]
             token_counter,
+            #[cfg(feature = "subflow")]
+            subflow_registry,
+            #[cfg(feature = "subflow")]
+            self_ref: std::sync::OnceLock::new(),
             run_event_senders: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             run_completed_tx,
         }
+    }
+
+    /// Inject a weak self-reference after wrapping in `Arc`.
+    ///
+    /// Called once by `EngineBuilder::build()`. Enables sub-flow nodes
+    /// to call back into the executor for recursive graph execution.
+    #[cfg(feature = "subflow")]
+    pub fn set_self_ref(self: &Arc<Self>) {
+        let _ = self.self_ref.set(Arc::downgrade(self));
     }
 
     /// Execute a flow graph. Returns immediately with an [`ExecutionHandle`].
@@ -227,6 +246,10 @@ impl Executor {
         let memory_manager = Arc::clone(&self.memory_manager);
         #[cfg(feature = "memory")]
         let token_counter = Arc::clone(&self.token_counter);
+        #[cfg(feature = "subflow")]
+        let subflow_registry = Arc::clone(&self.subflow_registry);
+        #[cfg(feature = "subflow")]
+        let executor_ref = self.self_ref.get().and_then(|w| w.upgrade());
         let http_client = self.http_client.clone();
         let max_traversals = self.config.max_traversals;
         let human_input_registry = Arc::clone(&self.human_in_loop_senders);
@@ -257,6 +280,10 @@ impl Executor {
                 memory_manager,
                 #[cfg(feature = "memory")]
                 token_counter,
+                #[cfg(feature = "subflow")]
+                subflow_registry,
+                #[cfg(feature = "subflow")]
+                executor: executor_ref,
             };
             let (final_run_id, final_status) = run::execute_run(ctx).await;
 
@@ -595,6 +622,8 @@ mod tests {
             Arc::new(crate::memory::InMemoryManager),
             #[cfg(feature = "memory")]
             Arc::new(crate::memory::CharEstimateCounter),
+            #[cfg(feature = "subflow")]
+            Arc::new(crate::subflow_registry::SubflowRegistry::new()),
         );
         (executor, run_store)
     }
@@ -1691,6 +1720,8 @@ mod tests {
             Arc::new(crate::memory::InMemoryManager),
             #[cfg(feature = "memory")]
             Arc::new(crate::memory::CharEstimateCounter),
+            #[cfg(feature = "subflow")]
+            Arc::new(crate::subflow_registry::SubflowRegistry::new()),
         );
         (executor, run_store)
     }

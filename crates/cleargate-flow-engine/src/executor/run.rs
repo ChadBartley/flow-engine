@@ -49,6 +49,10 @@ pub(super) struct RunContext {
     pub memory_manager: Arc<dyn crate::memory::MemoryManager>,
     #[cfg(feature = "memory")]
     pub token_counter: Arc<dyn crate::memory::TokenCounter>,
+    #[cfg(feature = "subflow")]
+    pub subflow_registry: Arc<crate::subflow_registry::SubflowRegistry>,
+    #[cfg(feature = "subflow")]
+    pub executor: Option<Arc<super::Executor>>,
 }
 
 // ---------------------------------------------------------------------------

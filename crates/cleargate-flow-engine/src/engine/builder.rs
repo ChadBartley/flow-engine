@@ -62,6 +62,8 @@ pub struct EngineBuilder {
     memory_manager: Option<Arc<dyn crate::memory::MemoryManager>>,
     #[cfg(feature = "memory")]
     token_counter: Option<Arc<dyn crate::memory::TokenCounter>>,
+    #[cfg(feature = "subflow")]
+    subflow_registry: crate::subflow_registry::SubflowRegistry,
 }
 
 impl EngineBuilder {
@@ -89,6 +91,8 @@ impl EngineBuilder {
             memory_manager: None,
             #[cfg(feature = "memory")]
             token_counter: None,
+            #[cfg(feature = "subflow")]
+            subflow_registry: crate::subflow_registry::SubflowRegistry::new(),
         }
     }
 
@@ -223,6 +227,16 @@ impl EngineBuilder {
         self
     }
 
+    /// Register a named sub-flow graph definition.
+    ///
+    /// The sub-flow can be referenced by name in a `SubflowNode` config:
+    /// `{ "subflow": "<name>" }`.
+    #[cfg(feature = "subflow")]
+    pub fn register_subflow(self, name: impl Into<String>, graph: crate::types::GraphDef) -> Self {
+        self.subflow_registry.register(name, graph);
+        self
+    }
+
     /// Assemble the engine. Applies defaults for any unset providers,
     /// scans dylib directories, registers built-in nodes, and starts
     /// the trigger system.
@@ -316,6 +330,10 @@ impl EngineBuilder {
             builtins.push(Box::new(crate::nodes::SupervisorNode));
             builtins.push(Box::new(crate::nodes::WorkerNode));
         }
+        #[cfg(feature = "subflow")]
+        {
+            builtins.push(Box::new(crate::nodes::SubflowNode));
+        }
         for builtin in builtins {
             let meta = builtin.meta();
             self.nodes
@@ -367,7 +385,13 @@ impl EngineBuilder {
             #[cfg(feature = "memory")]
             self.token_counter
                 .unwrap_or_else(|| Arc::new(crate::memory::CharEstimateCounter)),
+            #[cfg(feature = "subflow")]
+            Arc::new(self.subflow_registry),
         ));
+
+        // Inject self-reference so sub-flow nodes can call back into the executor.
+        #[cfg(feature = "subflow")]
+        executor.set_self_ref();
 
         // 9. Set up TriggerRunner (if any triggers registered).
         let (trigger_runner, trigger_event_rx, trigger_shutdown_tx) = if self.triggers.is_empty() {
