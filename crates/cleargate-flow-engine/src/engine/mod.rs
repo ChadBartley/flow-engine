@@ -58,6 +58,8 @@ pub struct Engine {
     #[allow(dead_code)] // Stored for future API layer access.
     pub(super) observability: Arc<dyn ObservabilityProvider>,
     pub(super) llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
+    #[cfg(feature = "mcp")]
+    pub(super) mcp_registry: Arc<crate::mcp::McpServerRegistry>,
     pub(super) trigger_runner: Option<TriggerRunner>,
     pub(super) run_completed_tx: broadcast::Sender<RunCompletedEvent>,
     /// Receiver for trigger events (taken once by `start_triggers()`).
@@ -182,6 +184,12 @@ impl Engine {
     /// Access the redactor.
     pub fn redactor(&self) -> &Arc<dyn Redactor> {
         &self.redactor
+    }
+
+    /// Access the MCP server registry.
+    #[cfg(feature = "mcp")]
+    pub fn mcp_registry(&self) -> &Arc<crate::mcp::McpServerRegistry> {
+        &self.mcp_registry
     }
 
     /// Returns all registered type definitions.

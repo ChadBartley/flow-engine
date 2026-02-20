@@ -16,6 +16,8 @@ pub mod engine;
 pub mod errors;
 pub mod executor;
 pub(crate) mod expression;
+#[cfg(feature = "mcp")]
+pub mod mcp;
 pub mod node_ctx;
 pub mod nodes;
 pub mod observer;
@@ -57,6 +59,8 @@ pub use node_ctx::test_support::{TestNodeCtx, TestNodeCtxInspector};
 pub use node_ctx::{NodeCtx, NodeEvent};
 
 // nodes
+#[cfg(feature = "mcp")]
+pub use nodes::McpCallNode;
 pub use nodes::{
     ConditionalNode, CsvToolNode, HttpNode, HumanInLoopNode, JqNode, JsonLookupNode, LlmCallNode,
     ToolRouterNode,

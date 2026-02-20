@@ -13,36 +13,43 @@ This roadmap tracks the remaining orchestration features. Core engine features l
 
 ---
 
-## O1: MCP Tool Integration
+## O1: MCP Tool Integration ✅ COMPLETE
 
 **Impact**: High — MCP is becoming the standard tool protocol. Enables massive tool ecosystem.
-**Scope**: Medium (~2-3 weeks)
-**Depends on**: Phase 0 only
+**Status**: Complete — 35 new tests, all quality gates pass.
 
-Wire the existing `ToolType::Mcp` stub into a working MCP client.
+### What Was Built
 
-### What Gets Built
-
-New module: `crates/cleargate-flow-engine/src/flow/mcp/`
+New module: `crates/cleargate-flow-engine/src/mcp/`
 
 - **MCP client** (stdio + SSE transports) — `client.rs`, `transport.rs`
-- **Protocol types** — `types.rs` (initialize, tools/list, tools/call, resources)
-- **Tool discovery** — `discovery.rs` converts MCP tool schemas → `ToolDef`
-- **ToolRouterNode** routes `ToolType::Mcp` calls through MCP client
-- **`EngineBuilder::mcp_server(name, config)`** registration
+- **Protocol types** — `types.rs` (JSON-RPC 2.0, initialize, tools/list, tools/call)
+- **Tool discovery** — `discovery.rs` converts `McpTool` → `ToolDef` with `ToolType::Mcp`
+- **Server registry** — `server.rs` with `McpServerConfig`, `McpServer` (lazy connect), `McpServerRegistry`
+- **Error mapping** — `McpError` with `From<McpError> for NodeError` (Connection→Retryable, Protocol→Fatal, Timeout→Timeout)
+- **`McpCallNode`** — new built-in node dispatching tool calls to MCP servers
+- **`EngineBuilder::mcp_server(name, config)`** — registration API
+- **MCP tools merge into `ctx.available_tools()`** at run start via `discover_all_tools()`
+- **`TestNodeCtx::builder().mcp_registry()`** — test support for injecting mock MCP servers
 
-### Key Decisions
+### Architecture Decision
 
-- Feature-gated: `mcp` feature (default on)
-- MCP servers registered at engine build time, connections established lazily
-- Tool discovery on first use or explicit refresh
-- MCP tools appear in `ctx.available_tools()` alongside graph-defined tools
-- **Static server list only** — O1 wires the protocol client and tool discovery; runtime add/remove of MCP servers (e.g., discover from a URL mid-run) is O3 territory
+Dedicated `McpCallNode` instead of modifying `ToolRouterNode`. ToolRouterNode stays as a pure fan-out passthrough; MCP dispatch is a separate node, testable independently.
+
+### Key Details for Next Agent
+
+- `mcp` feature gate: `Cargo.toml` feature `mcp = []` (no extra deps — `reqwest` is now always-on since the core executor uses it unconditionally)
+- `reqwest`, `libloading`, `cron`, `jq-rs` were all changed from `optional = true` to required because they're used unconditionally in core modules. Feature flags for `dylib`, `jq`, `cron`, `http-node`, `mcp` are now empty `[]` — they exist for semantic opt-in but don't gate dependencies.
+- `McpServer::with_client()` and `McpServerRegistry::register_server()` are `#[cfg(any(test, feature = "test-support"))]` for injecting mock transports in tests
+- MCP tool discovery happens once at run start in `executor/run.rs` — not per-node. Failed servers are logged and skipped (partial discovery).
+- The `#[cfg(feature = "mcp")]` pattern threads through: NodeCtx field + constructor param, execute_node(), spawn_node(), RunContext, Executor, EngineBuilder, Engine, dylib.rs callback. Use `#[allow(unused_mut)]` where `let mut` is only mutated inside a cfg block.
+- Protocol version: `2024-11-05`. Sends `notifications/initialized` after handshake.
+- Pagination supported for `tools/list` (follows `nextCursor`).
 
 ### Files
 
-- **Create:** `flow/mcp/mod.rs`, `client.rs`, `transport.rs`, `types.rs`, `discovery.rs`
-- **Modify:** `flow/nodes/tool_router.rs`, `flow/engine.rs`, `flow/types.rs`, `Cargo.toml`
+- **Created:** `src/mcp/mod.rs`, `client.rs`, `transport.rs`, `types.rs`, `discovery.rs`, `server.rs`, `src/nodes/mcp_call.rs`
+- **Modified:** `Cargo.toml`, `src/lib.rs`, `src/nodes/mod.rs`, `src/engine/builder.rs`, `src/engine/mod.rs`, `src/executor/mod.rs`, `src/executor/run.rs`, `src/executor/node.rs`, `src/node_ctx.rs`, `src/dylib.rs`
 
 ---
 

@@ -4,11 +4,12 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["dylib", "jq", "cron", "http-node"]
-dylib = ["dep:libloading"]
-jq = ["dep:jq-rs"]
-cron = ["dep:cron"]
-http-node = ["dep:reqwest"]
+default = ["dylib", "jq", "cron", "http-node", "mcp"]
+dylib = []
+jq = []
+cron = []
+http-node = []
+mcp = []
 schemars = ["dep:schemars"]
 test-support = []
 
@@ -44,11 +45,19 @@ csv = { workspace = true }
 # Synchronization
 parking_lot = { workspace = true }
 
+# HTTP client (used by executor core + HTTP/MCP nodes)
+reqwest = { workspace = true }
+
+# Dylib plugin loading (used unconditionally by dylib module)
+libloading = { workspace = true }
+
+# Cron scheduling (used unconditionally by trigger system)
+cron = { workspace = true }
+
+# JQ expression evaluation (used unconditionally by jq node)
+jq-rs = { workspace = true }
+
 # Feature-gated dependencies
-libloading = { workspace = true, optional = true }
-jq-rs = { workspace = true, optional = true }
-cron = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
 schemars = { workspace = true, optional = true }
 
 [dev-dependencies]

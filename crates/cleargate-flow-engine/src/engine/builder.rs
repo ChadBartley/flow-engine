@@ -56,6 +56,8 @@ pub struct EngineBuilder {
     pipeline_config: WritePipelineConfig,
     dylib_dirs: Vec<PathBuf>,
     crash_recovery: bool,
+    #[cfg(feature = "mcp")]
+    mcp_servers: Vec<(String, crate::mcp::McpServerConfig)>,
 }
 
 impl EngineBuilder {
@@ -77,6 +79,8 @@ impl EngineBuilder {
             pipeline_config: WritePipelineConfig::default(),
             dylib_dirs: Vec::new(),
             crash_recovery: true,
+            #[cfg(feature = "mcp")]
+            mcp_servers: Vec::new(),
         }
     }
 
@@ -187,6 +191,16 @@ impl EngineBuilder {
         self
     }
 
+    /// Register an MCP server by name and configuration.
+    ///
+    /// The server connects lazily on first use. Discovered tools are
+    /// automatically merged into `available_tools()` at run time.
+    #[cfg(feature = "mcp")]
+    pub fn mcp_server(mut self, name: &str, config: crate::mcp::McpServerConfig) -> Self {
+        self.mcp_servers.push((name.to_string(), config));
+        self
+    }
+
     /// Assemble the engine. Applies defaults for any unset providers,
     /// scans dylib directories, registers built-in nodes, and starts
     /// the trigger system.
@@ -256,7 +270,8 @@ impl EngineBuilder {
         }
 
         // 3. Register built-in nodes if not already present.
-        let builtins: Vec<Box<dyn NodeHandler>> = vec![
+        #[allow(unused_mut)]
+        let mut builtins: Vec<Box<dyn NodeHandler>> = vec![
             Box::new(LlmCallNode),
             Box::new(ToolRouterNode),
             Box::new(HttpNode),
@@ -266,6 +281,10 @@ impl EngineBuilder {
             Box::new(CsvToolNode),
             Box::new(JsonLookupNode),
         ];
+        #[cfg(feature = "mcp")]
+        {
+            builtins.push(Box::new(crate::nodes::McpCallNode));
+        }
         for builtin in builtins {
             let meta = builtin.meta();
             self.nodes
@@ -288,6 +307,15 @@ impl EngineBuilder {
 
         let llm_providers = Arc::new(self.llm_providers);
 
+        #[cfg(feature = "mcp")]
+        let mcp_registry = {
+            let mut registry = crate::mcp::McpServerRegistry::new();
+            for (name, config) in self.mcp_servers {
+                registry.register(name, config);
+            }
+            Arc::new(registry)
+        };
+
         let executor = Arc::new(Executor::new(
             self.executor_config,
             node_registry,
@@ -300,6 +328,8 @@ impl EngineBuilder {
             self.pipeline_config,
             Arc::clone(&llm_providers),
             run_completed_tx.clone(),
+            #[cfg(feature = "mcp")]
+            Arc::clone(&mcp_registry),
         ));
 
         // 9. Set up TriggerRunner (if any triggers registered).
@@ -367,6 +397,8 @@ impl EngineBuilder {
             redactor,
             observability,
             llm_providers,
+            #[cfg(feature = "mcp")]
+            mcp_registry,
             trigger_runner,
             run_completed_tx,
             trigger_event_rx: tokio::sync::Mutex::new(trigger_event_rx),

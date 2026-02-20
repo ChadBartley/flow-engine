@@ -484,6 +484,8 @@ impl NodeHandler for DylibNodeHandler {
             ctx.tool_definitions_arc(),
             None, // Human input not needed for dylib nodes
             ctx.llm_providers_arc(),
+            #[cfg(feature = "mcp")]
+            ctx.mcp_registry_arc(),
         );
 
         // 3. Execute on a blocking thread.

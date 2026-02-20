@@ -31,6 +31,9 @@ use super::types::{
     LlmChunk, LlmInvocationRecord, LlmRequest, LlmResponse, NodeError, Sensitivity, ToolDef,
 };
 
+#[cfg(feature = "mcp")]
+use super::mcp::McpServerRegistry;
+
 /// Type alias for the human-in-loop input registry.
 /// Keyed by `(run_id, node_instance_id)`.
 pub type HumanInputRegistry =
@@ -75,6 +78,8 @@ pub struct NodeCtx {
     tool_definitions: Arc<Vec<ToolDef>>,
     human_input_registry: Option<HumanInputRegistry>,
     llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
+    #[cfg(feature = "mcp")]
+    mcp_registry: Arc<McpServerRegistry>,
 }
 
 impl NodeCtx {
@@ -95,6 +100,7 @@ impl NodeCtx {
         tool_definitions: Arc<Vec<ToolDef>>,
         human_input_registry: Option<HumanInputRegistry>,
         llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
+        #[cfg(feature = "mcp")] mcp_registry: Arc<McpServerRegistry>,
     ) -> Self {
         Self {
             run_id,
@@ -108,6 +114,8 @@ impl NodeCtx {
             tool_definitions,
             human_input_registry,
             llm_providers,
+            #[cfg(feature = "mcp")]
+            mcp_registry,
         }
     }
 
@@ -285,6 +293,18 @@ impl NodeCtx {
         self.llm_providers.get(name).cloned()
     }
 
+    /// Look up a registered MCP server by name.
+    #[cfg(feature = "mcp")]
+    pub fn mcp_server(&self, name: &str) -> Option<Arc<super::mcp::McpServer>> {
+        self.mcp_registry.get(name)
+    }
+
+    /// Access the MCP server registry (for cloning into dylib contexts).
+    #[cfg(feature = "mcp")]
+    pub(crate) fn mcp_registry_arc(&self) -> Arc<McpServerRegistry> {
+        Arc::clone(&self.mcp_registry)
+    }
+
     /// Register a oneshot sender for human-in-loop input.
     ///
     /// The executor's `provide_input()` method delivers a value through the
@@ -458,6 +478,8 @@ pub mod test_support {
         tools: Vec<ToolDef>,
         human_input_registry: Option<HumanInputRegistry>,
         llm_providers: HashMap<String, Arc<dyn FlowLlmProvider>>,
+        #[cfg(feature = "mcp")]
+        mcp_registry: Option<Arc<crate::mcp::McpServerRegistry>>,
     }
 
     impl TestNodeCtx {
@@ -470,6 +492,8 @@ pub mod test_support {
                 tools: Vec::new(),
                 human_input_registry: None,
                 llm_providers: HashMap::new(),
+                #[cfg(feature = "mcp")]
+                mcp_registry: None,
             }
         }
 
@@ -509,6 +533,13 @@ pub mod test_support {
             self
         }
 
+        /// Set a custom MCP server registry for testing MCP nodes.
+        #[cfg(feature = "mcp")]
+        pub fn mcp_registry(mut self, registry: Arc<crate::mcp::McpServerRegistry>) -> Self {
+            self.mcp_registry = Some(registry);
+            self
+        }
+
         /// Build the `NodeCtx` and an inspector for verifying side effects.
         pub fn build(self) -> (NodeCtx, TestNodeCtxInspector) {
             let (event_tx, event_rx) = mpsc::channel::<NodeEvent>(1000);
@@ -538,6 +569,9 @@ pub mod test_support {
                 Arc::new(self.tools),
                 self.human_input_registry,
                 Arc::new(self.llm_providers),
+                #[cfg(feature = "mcp")]
+                self.mcp_registry
+                    .unwrap_or_else(|| Arc::new(crate::mcp::McpServerRegistry::new())),
             );
 
             let inspector = TestNodeCtxInspector {

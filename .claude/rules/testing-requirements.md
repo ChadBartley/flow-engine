@@ -1,0 +1,31 @@
+# Testing Requirements
+
+Every feature implementation MUST include comprehensive tests before it is considered complete.
+
+## Unit Tests
+
+- Every public function and method must have at least one test covering the happy path
+- Every error path must have a dedicated test proving it returns the correct error variant
+- Every branch in match/if-else logic must be exercised by at least one test
+- Mock external dependencies (transports, providers, stores) to test logic in isolation
+- Test serialization/deserialization roundtrips for all new types
+
+## Integration Tests
+
+- Every new node handler must have tests that exercise `run()` through a real `NodeCtx` (use `TestNodeCtx::builder()`)
+- Every new provider/registry must have tests that verify end-to-end flows (register → lookup → use)
+- Test feature interactions: if your feature plugs into the executor pipeline (e.g., tool discovery merging), write a test that proves it works through that pipeline
+
+## Test Quality Standards
+
+- Tests must assert on specific values, not just `is_ok()` / `is_err()`
+- Error tests must verify the error variant AND that the message contains meaningful context
+- Use descriptive test names that state the scenario: `run_error_server_not_found`, not `test_error_3`
+- Each test should test exactly one behavior — no mega-tests that assert 10 unrelated things
+- Provide test helper functions (mock builders, fixture constructors) to keep individual tests focused and readable
+
+## Coverage Expectations
+
+- New modules: aim for >90% line coverage of non-trivial logic
+- Bug fixes: include a regression test that would have caught the bug
+- Refactors: existing test count must not decrease unless tests were testing removed functionality

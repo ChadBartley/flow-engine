@@ -7,6 +7,8 @@ pub mod human_in_loop;
 pub mod jq_node;
 pub mod json_lookup;
 pub mod llm_call;
+#[cfg(feature = "mcp")]
+pub mod mcp_call;
 pub mod tool_router;
 
 pub use conditional::ConditionalNode;
@@ -16,4 +18,6 @@ pub use human_in_loop::HumanInLoopNode;
 pub use jq_node::JqNode;
 pub use json_lookup::JsonLookupNode;
 pub use llm_call::LlmCallNode;
+#[cfg(feature = "mcp")]
+pub use mcp_call::McpCallNode;
 pub use tool_router::ToolRouterNode;

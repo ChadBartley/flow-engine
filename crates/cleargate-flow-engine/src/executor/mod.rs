@@ -97,6 +97,8 @@ pub(crate) struct Executor {
     http_client: reqwest::Client,
     human_in_loop_senders: HumanInputRegistry,
     llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
+    #[cfg(feature = "mcp")]
+    mcp_registry: Arc<crate::mcp::McpServerRegistry>,
     /// Active run event senders for WebSocket subscription.
     /// Key: run_id, Value: broadcast sender for WriteEvent.
     run_event_senders: Arc<tokio::sync::RwLock<HashMap<String, broadcast::Sender<WriteEvent>>>>,
@@ -119,6 +121,7 @@ impl Executor {
         pipeline_config: WritePipelineConfig,
         llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
         run_completed_tx: broadcast::Sender<RunCompletedEvent>,
+        #[cfg(feature = "mcp")] mcp_registry: Arc<crate::mcp::McpServerRegistry>,
     ) -> Self {
         Self {
             config,
@@ -133,6 +136,8 @@ impl Executor {
             http_client: reqwest::Client::new(),
             human_in_loop_senders: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             llm_providers,
+            #[cfg(feature = "mcp")]
+            mcp_registry,
             run_event_senders: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             run_completed_tx,
         }
@@ -206,6 +211,8 @@ impl Executor {
         let queue = Arc::clone(&self.queue);
         let observability = Arc::clone(&self.observability);
         let llm_providers = Arc::clone(&self.llm_providers);
+        #[cfg(feature = "mcp")]
+        let mcp_registry = Arc::clone(&self.mcp_registry);
         let http_client = self.http_client.clone();
         let max_traversals = self.config.max_traversals;
         let human_input_registry = Arc::clone(&self.human_in_loop_senders);
@@ -230,6 +237,8 @@ impl Executor {
                 http_client,
                 max_traversals,
                 human_input_registry,
+                #[cfg(feature = "mcp")]
+                mcp_registry,
             };
             let (final_run_id, final_status) = run::execute_run(ctx).await;
 
@@ -562,6 +571,8 @@ mod tests {
             WritePipelineConfig::default(),
             Arc::new(HashMap::new()),
             run_completed_tx,
+            #[cfg(feature = "mcp")]
+            Arc::new(crate::mcp::McpServerRegistry::new()),
         );
         (executor, run_store)
     }
@@ -1638,6 +1649,8 @@ mod tests {
             WritePipelineConfig::default(),
             Arc::new(HashMap::new()),
             run_completed_tx,
+            #[cfg(feature = "mcp")]
+            Arc::new(crate::mcp::McpServerRegistry::new()),
         );
         (executor, run_store)
     }

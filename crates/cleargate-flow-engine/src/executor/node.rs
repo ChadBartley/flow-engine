@@ -71,6 +71,8 @@ pub(super) fn spawn_node(
     let http_client = ctx.http_client.clone();
     let tool_defs = Arc::clone(tool_defs);
     let human_input_registry = Arc::clone(&ctx.human_input_registry);
+    #[cfg(feature = "mcp")]
+    let mcp_registry = Arc::clone(&ctx.mcp_registry);
 
     let timeout_ms = meta.execution.timeout_ms;
     let retry = meta.execution.retry.clone();
@@ -96,6 +98,8 @@ pub(super) fn spawn_node(
             retry,
             fan_out_index,
             human_input_registry,
+            #[cfg(feature = "mcp")]
+            mcp_registry,
         )
         .await
     }))
@@ -123,6 +127,7 @@ async fn execute_node(
     retry: RetryPolicy,
     fan_out_index: Option<u32>,
     human_input_registry: HumanInputRegistry,
+    #[cfg(feature = "mcp")] mcp_registry: Arc<crate::mcp::McpServerRegistry>,
 ) -> NodeResult {
     let max_attempts = retry.max_attempts.max(1);
     let mut last_error = String::new();
@@ -162,6 +167,8 @@ async fn execute_node(
             Arc::clone(&tool_defs),
             Some(Arc::clone(&human_input_registry)),
             Arc::clone(&llm_providers),
+            #[cfg(feature = "mcp")]
+            Arc::clone(&mcp_registry),
         );
 
         let node_start = std::time::Instant::now();

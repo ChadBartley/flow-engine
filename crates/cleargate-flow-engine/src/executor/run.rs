@@ -42,6 +42,8 @@ pub(super) struct RunContext {
     pub http_client: reqwest::Client,
     pub max_traversals: u32,
     pub human_input_registry: HumanInputRegistry,
+    #[cfg(feature = "mcp")]
+    pub mcp_registry: Arc<crate::mcp::McpServerRegistry>,
 }
 
 // ---------------------------------------------------------------------------
@@ -67,9 +69,23 @@ pub(super) async fn execute_run(mut ctx: RunContext) -> (String, RunStatus) {
     let mut fan_out_states: HashMap<String, FanOutState> = HashMap::new();
     let mut cancelled = false;
 
-    // Tool definitions from the graph.
-    let tool_defs: Arc<Vec<ToolDef>> =
-        Arc::new(ctx.graph.tool_definitions.values().cloned().collect());
+    // Tool definitions from the graph, merged with MCP-discovered tools.
+    #[allow(unused_mut)]
+    let mut all_tools: Vec<ToolDef> = ctx.graph.tool_definitions.values().cloned().collect();
+
+    #[cfg(feature = "mcp")]
+    {
+        if !ctx.mcp_registry.is_empty() {
+            match ctx.mcp_registry.discover_all_tools().await {
+                Ok(mcp_tools) => all_tools.extend(mcp_tools),
+                Err(e) => {
+                    tracing::warn!(error = %e, "failed to discover MCP tools");
+                }
+            }
+        }
+    }
+
+    let tool_defs: Arc<Vec<ToolDef>> = Arc::new(all_tools);
 
     // Seed entry nodes with the trigger inputs.
     for entry in &entry_nodes {
