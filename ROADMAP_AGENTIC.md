@@ -110,25 +110,37 @@ Dedicated `McpCallNode` instead of modifying `ToolRouterNode`. ToolRouterNode st
 
 ---
 
-## O4: Memory & Context Management
+## O4: Memory & Context Management ✅ COMPLETE
 
 **Impact**: High — enables multi-turn agents.
-**Scope**: Medium (~2 weeks)
-**Pattern**: Extension crate (`cleargate-memory` or integrated into `cleargate-storage-oss`)
+**Status**: Complete — ~40 new tests, all quality gates pass.
 
-### What Gets Built
+### What Was Built
 
-- **Conversation history windowing** — sliding window by message count or token count
-- **Summarization hooks** — trait for pluggable summarization (LLM-based or extractive)
-- **Token counting** — trait `TokenCounter` with tiktoken-rs default impl
-- **`MemoryManager`** — manages history per flow run, backed by `cleargate-storage-oss` SeaORM models or in-memory fallback
+New module: `crates/cleargate-flow-engine/src/memory/`
 
-### Key Decisions
+- **`TokenCounter` trait** — `token_counter.rs` with `count_tokens(&str)` and `count_messages(&[Value])`; `CharEstimateCounter` default (chars/4, no external deps)
+- **`MemoryStrategy` enum** — `strategy.rs` with three variants: `MessageCount`, `TokenBudget`, `Summarize`; serde-tagged for JSON config
+- **`MemoryConfig`** — `config.rs` with flattened strategy deserialization from node config JSON
+- **`MemoryManager` trait** — `mod.rs` with `prepare_messages()` async method; `InMemoryManager` default implementation
+- **`ContextManagementNode`** — standalone built-in node for explicit context management in graph pipelines
+- **LlmCallNode integration** — automatic memory management via `memory` config key; separates trimmed messages (sent to LLM) from full history (persisted to state)
 
-- Core engine defines the `MemoryManager` trait and in-memory default
-- Persistent memory lives in an extension crate, leveraging `cleargate-storage-oss` and SeaORM for SQLite/PostgreSQL storage
-- Token counting is trait-based — users can plug in provider-specific tokenizers
-- Summarization is optional — flows work with simple windowing by default
+### Architecture Decision
+
+Integrated into core engine behind `memory` feature gate (semantic opt-in, no extra deps, enabled by default). Token counting uses char-estimate in core; accurate tiktoken-rs counter planned for `cleargate-providers`. Summarization calls LLM via the existing provider infrastructure — configurable per-node or falls back to the node's own provider/model.
+
+### Key Details for Next Agent
+
+- `MemoryManager` + `TokenCounter` propagate through the full chain: `EngineBuilder` → `Engine` → `Executor` → `RunContext` → `execute_node` → `NodeCtx`
+- System messages are always preserved across all strategies
+- `Summarize` strategy calls LLM to condense older messages, keeps recent N verbatim
+- Full conversation history is always persisted to state (not the trimmed version) so future summarizations have complete context
+
+### Files
+
+- **Created**: `memory/mod.rs`, `memory/strategy.rs`, `memory/config.rs`, `memory/token_counter.rs`, `nodes/context_management.rs`
+- **Modified**: `Cargo.toml`, `lib.rs`, `node_ctx.rs`, `executor/mod.rs`, `executor/run.rs`, `executor/node.rs`, `engine/builder.rs`, `dylib.rs`, `nodes/mod.rs`, `nodes/llm_call.rs`
 
 ---
 
@@ -183,11 +195,11 @@ Dedicated `McpCallNode` instead of modifying `ToolRouterNode`. ToolRouterNode st
 
 Orchestration-mode bindings for all three language crates, feature-gated so users opt in:
 
-| Crate | Package | Feature gate |
-|---|---|---|
-| `cleargate-python` | `pip install cleargate[engine]` | `engine` feature |
-| `cleargate-node` | `npm install cleargate` (engine entry point) | `engine` feature |
-| `cleargate-dotnet` | `ClearGate.Engine` NuGet package | `Engine` feature |
+| Crate              | Package                                      | Feature gate     |
+| ------------------ | -------------------------------------------- | ---------------- |
+| `cleargate-python` | `pip install cleargate[engine]`              | `engine` feature |
+| `cleargate-node`   | `npm install cleargate` (engine entry point) | `engine` feature |
+| `cleargate-dotnet` | `ClearGate.Engine` NuGet package             | `Engine` feature |
 
 **Capabilities exposed per language:**
 
@@ -220,10 +232,10 @@ Observer-mode bindings (ObserverSession, replay, diff, inspect) already ship in 
 
 ## Additional Items (demand-driven)
 
-| Feature | Notes |
-|---|---|
+| Feature           | Notes                                               |
+| ----------------- | --------------------------------------------------- |
 | Schema Generation | OpenAPI/JSON Schema for flow definitions (schemars) |
-| WASM Target | Constrained (no dylib, no fs, single-threaded) |
+| WASM Target       | Constrained (no dylib, no fs, single-threaded)      |
 
 ---
 

@@ -92,6 +92,10 @@ pub(super) fn spawn_node(
     let human_input_registry = Arc::clone(&ctx.human_input_registry);
     #[cfg(feature = "mcp")]
     let mcp_registry = Arc::clone(&ctx.mcp_registry);
+    #[cfg(feature = "memory")]
+    let memory_manager = Arc::clone(&ctx.memory_manager);
+    #[cfg(feature = "memory")]
+    let token_counter = Arc::clone(&ctx.token_counter);
 
     let timeout_ms = meta.execution.timeout_ms;
     let retry = meta.execution.retry.clone();
@@ -120,6 +124,10 @@ pub(super) fn spawn_node(
             human_input_registry,
             #[cfg(feature = "mcp")]
             mcp_registry,
+            #[cfg(feature = "memory")]
+            memory_manager,
+            #[cfg(feature = "memory")]
+            token_counter,
         )
         .await
     }))
@@ -149,6 +157,8 @@ async fn execute_node(
     fan_out_index: Option<u32>,
     human_input_registry: HumanInputRegistry,
     #[cfg(feature = "mcp")] mcp_registry: Arc<crate::mcp::McpServerRegistry>,
+    #[cfg(feature = "memory")] memory_manager: Arc<dyn crate::memory::MemoryManager>,
+    #[cfg(feature = "memory")] token_counter: Arc<dyn crate::memory::TokenCounter>,
 ) -> NodeResult {
     let max_attempts = retry.max_attempts.max(1);
     let mut last_error = String::new();
@@ -190,6 +200,10 @@ async fn execute_node(
             Arc::clone(&llm_providers),
             #[cfg(feature = "mcp")]
             Arc::clone(&mcp_registry),
+            #[cfg(feature = "memory")]
+            Arc::clone(&memory_manager),
+            #[cfg(feature = "memory")]
+            Arc::clone(&token_counter),
             tool_registry.clone(),
         );
 

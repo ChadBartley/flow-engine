@@ -34,6 +34,8 @@ use super::types::{
 
 #[cfg(feature = "mcp")]
 use super::mcp::McpServerRegistry;
+#[cfg(feature = "memory")]
+use super::memory::{MemoryManager, TokenCounter};
 
 /// Type alias for the human-in-loop input registry.
 /// Keyed by `(run_id, node_instance_id)`.
@@ -81,6 +83,10 @@ pub struct NodeCtx {
     llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
     #[cfg(feature = "mcp")]
     mcp_registry: Arc<McpServerRegistry>,
+    #[cfg(feature = "memory")]
+    memory_manager: Arc<dyn MemoryManager>,
+    #[cfg(feature = "memory")]
+    token_counter: Arc<dyn TokenCounter>,
     tool_registry: ToolRegistry,
 }
 
@@ -103,6 +109,8 @@ impl NodeCtx {
         human_input_registry: Option<HumanInputRegistry>,
         llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
         #[cfg(feature = "mcp")] mcp_registry: Arc<McpServerRegistry>,
+        #[cfg(feature = "memory")] memory_manager: Arc<dyn MemoryManager>,
+        #[cfg(feature = "memory")] token_counter: Arc<dyn TokenCounter>,
         tool_registry: ToolRegistry,
     ) -> Self {
         Self {
@@ -119,6 +127,10 @@ impl NodeCtx {
             llm_providers,
             #[cfg(feature = "mcp")]
             mcp_registry,
+            #[cfg(feature = "memory")]
+            memory_manager,
+            #[cfg(feature = "memory")]
+            token_counter,
             tool_registry,
         }
     }
@@ -315,6 +327,30 @@ impl NodeCtx {
     /// immediately visible to all nodes spawned after the modification.
     pub fn tool_registry(&self) -> &ToolRegistry {
         &self.tool_registry
+    }
+
+    /// Access the memory manager.
+    #[cfg(feature = "memory")]
+    pub fn memory_manager(&self) -> &Arc<dyn MemoryManager> {
+        &self.memory_manager
+    }
+
+    /// Access the token counter.
+    #[cfg(feature = "memory")]
+    pub fn token_counter(&self) -> &Arc<dyn TokenCounter> {
+        &self.token_counter
+    }
+
+    /// Access the memory manager as an `Arc` (for cloning into dylib contexts).
+    #[cfg(feature = "memory")]
+    pub(crate) fn memory_manager_arc(&self) -> Arc<dyn MemoryManager> {
+        Arc::clone(&self.memory_manager)
+    }
+
+    /// Access the token counter as an `Arc` (for cloning into dylib contexts).
+    #[cfg(feature = "memory")]
+    pub(crate) fn token_counter_arc(&self) -> Arc<dyn TokenCounter> {
+        Arc::clone(&self.token_counter)
     }
 
     /// Register a oneshot sender for human-in-loop input.
@@ -587,6 +623,10 @@ pub mod test_support {
                 #[cfg(feature = "mcp")]
                 self.mcp_registry
                     .unwrap_or_else(|| Arc::new(crate::mcp::McpServerRegistry::new())),
+                #[cfg(feature = "memory")]
+                Arc::new(crate::memory::InMemoryManager),
+                #[cfg(feature = "memory")]
+                Arc::new(crate::memory::CharEstimateCounter),
                 tool_registry,
             );
 

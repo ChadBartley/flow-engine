@@ -58,6 +58,10 @@ pub struct EngineBuilder {
     crash_recovery: bool,
     #[cfg(feature = "mcp")]
     mcp_servers: Vec<(String, crate::mcp::McpServerConfig)>,
+    #[cfg(feature = "memory")]
+    memory_manager: Option<Arc<dyn crate::memory::MemoryManager>>,
+    #[cfg(feature = "memory")]
+    token_counter: Option<Arc<dyn crate::memory::TokenCounter>>,
 }
 
 impl EngineBuilder {
@@ -81,6 +85,10 @@ impl EngineBuilder {
             crash_recovery: true,
             #[cfg(feature = "mcp")]
             mcp_servers: Vec::new(),
+            #[cfg(feature = "memory")]
+            memory_manager: None,
+            #[cfg(feature = "memory")]
+            token_counter: None,
         }
     }
 
@@ -201,6 +209,20 @@ impl EngineBuilder {
         self
     }
 
+    /// Set a custom memory manager. Default: [`InMemoryManager`](crate::memory::InMemoryManager).
+    #[cfg(feature = "memory")]
+    pub fn memory_manager(mut self, mgr: Arc<dyn crate::memory::MemoryManager>) -> Self {
+        self.memory_manager = Some(mgr);
+        self
+    }
+
+    /// Set a custom token counter. Default: [`CharEstimateCounter`](crate::memory::CharEstimateCounter).
+    #[cfg(feature = "memory")]
+    pub fn token_counter(mut self, counter: Arc<dyn crate::memory::TokenCounter>) -> Self {
+        self.token_counter = Some(counter);
+        self
+    }
+
     /// Assemble the engine. Applies defaults for any unset providers,
     /// scans dylib directories, registers built-in nodes, and starts
     /// the trigger system.
@@ -285,6 +307,10 @@ impl EngineBuilder {
         {
             builtins.push(Box::new(crate::nodes::McpCallNode));
         }
+        #[cfg(feature = "memory")]
+        {
+            builtins.push(Box::new(crate::nodes::ContextManagementNode));
+        }
         for builtin in builtins {
             let meta = builtin.meta();
             self.nodes
@@ -330,6 +356,12 @@ impl EngineBuilder {
             run_completed_tx.clone(),
             #[cfg(feature = "mcp")]
             Arc::clone(&mcp_registry),
+            #[cfg(feature = "memory")]
+            self.memory_manager
+                .unwrap_or_else(|| Arc::new(crate::memory::InMemoryManager)),
+            #[cfg(feature = "memory")]
+            self.token_counter
+                .unwrap_or_else(|| Arc::new(crate::memory::CharEstimateCounter)),
         ));
 
         // 9. Set up TriggerRunner (if any triggers registered).

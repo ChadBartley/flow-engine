@@ -18,6 +18,8 @@ pub mod executor;
 pub(crate) mod expression;
 #[cfg(feature = "mcp")]
 pub mod mcp;
+#[cfg(feature = "memory")]
+pub mod memory;
 pub mod node_ctx;
 pub mod nodes;
 pub mod observer;
@@ -59,7 +61,15 @@ pub use executor::{ExecutionHandle, ExecutorConfig, ExecutorError};
 pub use node_ctx::test_support::{TestNodeCtx, TestNodeCtxInspector};
 pub use node_ctx::{NodeCtx, NodeEvent};
 
+// memory
+#[cfg(feature = "memory")]
+pub use memory::{
+    CharEstimateCounter, InMemoryManager, MemoryConfig, MemoryManager, MemoryStrategy, TokenCounter,
+};
+
 // nodes
+#[cfg(feature = "memory")]
+pub use nodes::ContextManagementNode;
 #[cfg(feature = "mcp")]
 pub use nodes::McpCallNode;
 pub use nodes::{

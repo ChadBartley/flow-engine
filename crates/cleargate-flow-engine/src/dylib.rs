@@ -486,6 +486,10 @@ impl NodeHandler for DylibNodeHandler {
             ctx.llm_providers_arc(),
             #[cfg(feature = "mcp")]
             ctx.mcp_registry_arc(),
+            #[cfg(feature = "memory")]
+            ctx.memory_manager_arc(),
+            #[cfg(feature = "memory")]
+            ctx.token_counter_arc(),
             ctx.tool_registry().clone(),
         );
 

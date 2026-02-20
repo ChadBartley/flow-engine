@@ -45,6 +45,10 @@ pub(super) struct RunContext {
     pub human_input_registry: HumanInputRegistry,
     #[cfg(feature = "mcp")]
     pub mcp_registry: Arc<crate::mcp::McpServerRegistry>,
+    #[cfg(feature = "memory")]
+    pub memory_manager: Arc<dyn crate::memory::MemoryManager>,
+    #[cfg(feature = "memory")]
+    pub token_counter: Arc<dyn crate::memory::TokenCounter>,
 }
 
 // ---------------------------------------------------------------------------

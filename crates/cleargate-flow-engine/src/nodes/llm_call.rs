@@ -192,6 +192,37 @@ impl NodeHandler for LlmCallNode {
             }
         }
 
+        // 3b. Apply memory management (if configured).
+        // `llm_messages` are sent to the LLM (possibly trimmed).
+        // `messages` retains the full history for state persistence.
+        #[cfg(feature = "memory")]
+        let llm_messages = {
+            use crate::memory::MemoryConfig;
+
+            let memory_config: MemoryConfig = config
+                .get("memory")
+                .cloned()
+                .map(|v| serde_json::from_value(v).unwrap_or_default())
+                .unwrap_or_default();
+
+            if let Some(ref strategy) = memory_config.strategy {
+                ctx.memory_manager()
+                    .prepare_messages(
+                        messages.clone(),
+                        strategy,
+                        ctx.token_counter().as_ref(),
+                        &ctx.llm_providers_arc(),
+                        &provider_name,
+                        &model,
+                    )
+                    .await?
+            } else {
+                messages.clone()
+            }
+        };
+        #[cfg(not(feature = "memory"))]
+        let llm_messages = messages.clone();
+
         // 4. Build tools from graph (if enabled)
         let tools_from_graph = config
             .get("tools_from_graph")
@@ -276,7 +307,7 @@ impl NodeHandler for LlmCallNode {
         let llm_request_base = LlmRequest {
             provider: provider_name.clone(),
             model: model.clone(),
-            messages: Value::Array(messages.clone()),
+            messages: Value::Array(llm_messages.clone()),
             tools: tools.clone(),
             temperature,
             top_p: None,
@@ -298,7 +329,7 @@ impl NodeHandler for LlmCallNode {
         #[allow(unused_mut)]
         let mut last_validation_error: Option<String> = None;
         #[allow(unused_mut)]
-        let mut current_messages = messages.clone();
+        let mut current_messages = llm_messages.clone();
 
         let llm_response = loop {
             // Build request with current messages (may include retry feedback)

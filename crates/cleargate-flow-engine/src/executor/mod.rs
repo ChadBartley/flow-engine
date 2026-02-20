@@ -99,6 +99,10 @@ pub(crate) struct Executor {
     llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
     #[cfg(feature = "mcp")]
     mcp_registry: Arc<crate::mcp::McpServerRegistry>,
+    #[cfg(feature = "memory")]
+    memory_manager: Arc<dyn crate::memory::MemoryManager>,
+    #[cfg(feature = "memory")]
+    token_counter: Arc<dyn crate::memory::TokenCounter>,
     /// Active run event senders for WebSocket subscription.
     /// Key: run_id, Value: broadcast sender for WriteEvent.
     run_event_senders: Arc<tokio::sync::RwLock<HashMap<String, broadcast::Sender<WriteEvent>>>>,
@@ -122,6 +126,8 @@ impl Executor {
         llm_providers: Arc<HashMap<String, Arc<dyn FlowLlmProvider>>>,
         run_completed_tx: broadcast::Sender<RunCompletedEvent>,
         #[cfg(feature = "mcp")] mcp_registry: Arc<crate::mcp::McpServerRegistry>,
+        #[cfg(feature = "memory")] memory_manager: Arc<dyn crate::memory::MemoryManager>,
+        #[cfg(feature = "memory")] token_counter: Arc<dyn crate::memory::TokenCounter>,
     ) -> Self {
         Self {
             config,
@@ -138,6 +144,10 @@ impl Executor {
             llm_providers,
             #[cfg(feature = "mcp")]
             mcp_registry,
+            #[cfg(feature = "memory")]
+            memory_manager,
+            #[cfg(feature = "memory")]
+            token_counter,
             run_event_senders: Arc::new(tokio::sync::RwLock::new(HashMap::new())),
             run_completed_tx,
         }
@@ -213,6 +223,10 @@ impl Executor {
         let llm_providers = Arc::clone(&self.llm_providers);
         #[cfg(feature = "mcp")]
         let mcp_registry = Arc::clone(&self.mcp_registry);
+        #[cfg(feature = "memory")]
+        let memory_manager = Arc::clone(&self.memory_manager);
+        #[cfg(feature = "memory")]
+        let token_counter = Arc::clone(&self.token_counter);
         let http_client = self.http_client.clone();
         let max_traversals = self.config.max_traversals;
         let human_input_registry = Arc::clone(&self.human_in_loop_senders);
@@ -239,6 +253,10 @@ impl Executor {
                 human_input_registry,
                 #[cfg(feature = "mcp")]
                 mcp_registry,
+                #[cfg(feature = "memory")]
+                memory_manager,
+                #[cfg(feature = "memory")]
+                token_counter,
             };
             let (final_run_id, final_status) = run::execute_run(ctx).await;
 
@@ -573,6 +591,10 @@ mod tests {
             run_completed_tx,
             #[cfg(feature = "mcp")]
             Arc::new(crate::mcp::McpServerRegistry::new()),
+            #[cfg(feature = "memory")]
+            Arc::new(crate::memory::InMemoryManager),
+            #[cfg(feature = "memory")]
+            Arc::new(crate::memory::CharEstimateCounter),
         );
         (executor, run_store)
     }
@@ -1665,6 +1687,10 @@ mod tests {
             run_completed_tx,
             #[cfg(feature = "mcp")]
             Arc::new(crate::mcp::McpServerRegistry::new()),
+            #[cfg(feature = "memory")]
+            Arc::new(crate::memory::InMemoryManager),
+            #[cfg(feature = "memory")]
+            Arc::new(crate::memory::CharEstimateCounter),
         );
         (executor, run_store)
     }
