@@ -20,6 +20,8 @@ pub(crate) mod expression;
 pub mod mcp;
 #[cfg(feature = "memory")]
 pub mod memory;
+#[cfg(feature = "multi-agent")]
+pub mod multi_agent;
 pub mod node_ctx;
 pub mod nodes;
 pub mod observer;
@@ -67,6 +69,10 @@ pub use memory::{
     CharEstimateCounter, InMemoryManager, MemoryConfig, MemoryManager, MemoryStrategy, TokenCounter,
 };
 
+// multi_agent
+#[cfg(feature = "multi-agent")]
+pub use multi_agent::{AgentHandoff, AgentRole, Blackboard};
+
 // nodes
 #[cfg(feature = "memory")]
 pub use nodes::ContextManagementNode;
@@ -76,6 +82,8 @@ pub use nodes::{
     ConditionalNode, CsvToolNode, HttpNode, HumanInLoopNode, JqNode, JsonLookupNode, LlmCallNode,
     ToolRouterNode,
 };
+#[cfg(feature = "multi-agent")]
+pub use nodes::{SupervisorNode, WorkerNode};
 
 // observer
 pub use observer::ObserverSession;

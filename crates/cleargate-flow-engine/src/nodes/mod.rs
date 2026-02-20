@@ -11,7 +11,11 @@ pub mod json_lookup;
 pub mod llm_call;
 #[cfg(feature = "mcp")]
 pub mod mcp_call;
+#[cfg(feature = "multi-agent")]
+pub mod supervisor;
 pub mod tool_router;
+#[cfg(feature = "multi-agent")]
+pub mod worker;
 
 pub use conditional::ConditionalNode;
 #[cfg(feature = "memory")]
@@ -24,4 +28,8 @@ pub use json_lookup::JsonLookupNode;
 pub use llm_call::LlmCallNode;
 #[cfg(feature = "mcp")]
 pub use mcp_call::McpCallNode;
+#[cfg(feature = "multi-agent")]
+pub use supervisor::SupervisorNode;
 pub use tool_router::ToolRouterNode;
+#[cfg(feature = "multi-agent")]
+pub use worker::WorkerNode;

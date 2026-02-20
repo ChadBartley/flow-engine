@@ -144,24 +144,54 @@ Integrated into core engine behind `memory` feature gate (semantic opt-in, no ex
 
 ---
 
-## O5: Multi-Agent Patterns
+## O5: Multi-Agent Patterns ✅ COMPLETE
 
 **Impact**: Medium — enables complex agent architectures.
-**Scope**: Medium (~2-3 weeks)
-**Depends on**: O4 (Memory)
+**Status**: Complete — all quality gates pass.
 
-### What Gets Built
+### What Was Built
 
-- **Supervisor/worker topology** — supervisor node delegates to worker sub-graphs
-- **Agent handoff** — structured transfer of context between agent nodes
-- **Shared blackboard state** — `StateStore`-backed shared memory across agents in a run
-- Patterns implemented as graph topologies + conventions, not new execution primitives
+New module: `crates/cleargate-flow-engine/src/multi_agent/`
 
-### Key Decisions
+- **`Blackboard`** — namespaced shared memory wrapper over `StateStore` (`blackboard.rs`)
+  - `read(namespace, key)`, `write(namespace, key, value)`, `read_all(namespace)`
+  - Keys stored as `"{namespace}:{key}"` — agents write to their namespace, supervisors read across
+- **`AgentHandoff`** — serde-serializable context transfer struct (`handoff.rs`)
+  - `from_node_output()` extracts from `_handoff` key; `to_node_input()` wraps for downstream
+  - Fields: `from_agent`, `to_agent`, `task`, `context`, `constraints`
+- **`AgentRole`** enum — `Supervisor` / `Worker` for introspection and observability
+- **`SupervisorNode`** (`nodes/supervisor.rs`) — LLM-powered delegation node
+  - Builds a prompt listing available workers, calls LLM to decide delegation
+  - Outputs `AgentHandoff`, `target_worker` (for edge-condition routing), `done`, `final_result`
+  - Persists delegation history to blackboard under `supervisor:delegations`
+  - Validates worker names against config; rejects unknown workers
+- **`WorkerNode`** (`nodes/worker.rs`) — task execution wrapper
+  - Accepts `AgentHandoff` (via `_handoff` or `handoff` key), calls LLM, writes result to blackboard
+  - Outputs `result` and `worker_name` for supervisor consumption
+- **`NodeCtx::blackboard()`** method — constructs a `Blackboard` from existing state + run_id
+- **Feature gate**: `multi-agent = []` (no extra deps, included in `default`)
+- **Registration**: `SupervisorNode` and `WorkerNode` in `engine/builder.rs` builtins
 
-- Multi-agent is a pattern library on top of existing executor, not a new runtime
-- Blackboard uses existing `StateStore` with namespaced keys
-- Handoff is modeled as edge data between nodes
+### Architecture Decision
+
+Pattern library on top of existing executor — no new runtime or execution primitives. Blackboard wraps `StateStore` with namespaced keys. Handoff travels as serialized edge data. Supervisor routing uses `target_worker` output field matched by downstream conditional edges.
+
+### Key Details for Next Agent
+
+- `multi-agent` feature gate: empty `[]` like `mcp`, `memory` — semantic opt-in, no extra deps
+- `Blackboard` constructed from `Arc<dyn StateStore>` + `run_id` — no new NodeCtx fields needed
+- `NodeCtx::blackboard()` is `#[cfg(feature = "multi-agent")]`
+- Supervisor uses `response_format: json_object` for reliable JSON decisions
+- Worker accepts handoff from `_handoff` key (from `to_node_input()`), `handoff` key (from supervisor output), or treats entire input as task (fallback)
+
+### Files
+
+- `src/multi_agent/mod.rs` — module exports, `AgentRole` enum
+- `src/multi_agent/blackboard.rs` — `Blackboard` wrapper
+- `src/multi_agent/handoff.rs` — `AgentHandoff` types
+- `src/nodes/supervisor.rs` — `SupervisorNode`
+- `src/nodes/worker.rs` — `WorkerNode`
+- Modified: `lib.rs`, `node_ctx.rs`, `nodes/mod.rs`, `engine/builder.rs`, `Cargo.toml`
 
 ---
 

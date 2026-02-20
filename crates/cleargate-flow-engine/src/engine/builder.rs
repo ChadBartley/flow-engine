@@ -311,6 +311,11 @@ impl EngineBuilder {
         {
             builtins.push(Box::new(crate::nodes::ContextManagementNode));
         }
+        #[cfg(feature = "multi-agent")]
+        {
+            builtins.push(Box::new(crate::nodes::SupervisorNode));
+            builtins.push(Box::new(crate::nodes::WorkerNode));
+        }
         for builtin in builtins {
             let meta = builtin.meta();
             self.nodes

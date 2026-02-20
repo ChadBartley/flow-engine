@@ -353,6 +353,16 @@ impl NodeCtx {
         Arc::clone(&self.token_counter)
     }
 
+    /// Create a [`Blackboard`](crate::multi_agent::Blackboard) scoped to this run.
+    ///
+    /// The blackboard provides namespaced shared memory for cross-agent
+    /// communication. It wraps the run's existing [`StateStore`] — no
+    /// additional storage is needed.
+    #[cfg(feature = "multi-agent")]
+    pub fn blackboard(&self) -> crate::multi_agent::Blackboard {
+        crate::multi_agent::Blackboard::new(Arc::clone(&self.state), self.run_id.clone())
+    }
+
     /// Register a oneshot sender for human-in-loop input.
     ///
     /// The executor's `provide_input()` method delivers a value through the
